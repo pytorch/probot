@@ -23,9 +23,9 @@ describe('My Probot app', () => {
       .reply(200, { token: 'test' })
 
     const scope = nock('https://api.github.com')
-      .post('/repos/ezyang/testing-ideal-computing-machine/issues/5/comments', (body) => {
+      .patch('/repos/ezyang/testing-ideal-computing-machine/issues/5', (body) => {
         expect(body).toMatchObject({
-          body: 'cc @ezyang'
+          body: 'Arf arf\n\ncc @ezyang @moo @mar\nxxxx'
         })
         return true
       })

@@ -16,11 +16,24 @@ module.exports = app => {
       }
     })
     if (cc.size) {
-      let body = 'cc'
+      const body = context.payload['issue']['body']
+      const reCC = /cc( +@[a-zA-Z0-9-]+)+/
+      const oldCCString = body.match(reCC)[0]
+      if (oldCCString) {
+        console.log(oldCCString)
+        let m
+        const reUsername = /@([a-zA-Z0-9-]+)/g
+        while ((m = reUsername.exec(oldCCString)) !== null) {
+          cc.add(m[1])
+        }
+      }
+      console.log(cc)
+      let newCCString = 'cc'
       cc.forEach(u => {
-        body += ' @' + u
+        newCCString += ' @' + u
       })
-      await context.github.issues.createComment(context.issue({ body }))
+      const newBody = body.replace(reCC, newCCString)
+      await context.github.issues.update(context.issue({ body: newBody }))
     }
   })
 }
