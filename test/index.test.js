@@ -2,9 +2,6 @@ const nock = require('nock')
 // Requiring our app implementation
 const myProbotApp = require('..')
 const { Probot } = require('probot')
-// Requiring our fixtures
-const payload = require('./fixtures/issues.opened')
-const issueCreatedBody = { body: 'Thanks for opening this issue!' }
 
 nock.disableNetConnect()
 
@@ -20,22 +17,24 @@ describe('My Probot app', () => {
     app.app = () => 'test'
   })
 
-  test('creates a comment when an issue is opened', async () => {
-    // Test that we correctly return a test token
+  test('creates a comment when an issue is labeled', async () => {
     nock('https://api.github.com')
-      .post('/app/installations/2/access_tokens')
+      .post('/app/installations/1492531/access_tokens')
       .reply(200, { token: 'test' })
 
-    // Test that a comment is posted
-    nock('https://api.github.com')
-      .post('/repos/hiimbex/testing-things/issues/1/comments', (body) => {
-        expect(body).toMatchObject(issueCreatedBody)
+    const scope = nock('https://api.github.com')
+      .post('/repos/ezyang/testing-ideal-computing-machine/issues/5/comments', (body) => {
+        expect(body).toMatchObject({
+          body: 'cc @ezyang'
+        })
         return true
       })
       .reply(200)
 
     // Receive a webhook event
-    await probot.receive({ name: 'issues', payload })
+    await probot.receive({ name: 'issues', payload: require('./fixtures/issues.labeled') })
+
+    scope.done()
   })
 })
 

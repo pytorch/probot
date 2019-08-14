@@ -1,19 +1,26 @@
+const subscriptions = {
+  'module: binaries': ['ezyang']
+}
+
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Application} app
  */
 module.exports = app => {
-  // Your code here
-  app.log('Yay, the app was loaded!')
-
-  app.on('issues.opened', async context => {
-    const issueComment = context.issue({ body: 'Thanks for opening this issue!' })
-    return context.github.issues.createComment(issueComment)
+  app.on('issues.labeled', async context => {
+    const labels = context.payload['issue']['labels'].map(e => e['name'])
+    const cc = new Set()
+    labels.forEach(l => {
+      if (l in subscriptions) {
+        subscriptions[l].forEach(u => cc.add(u))
+      }
+    })
+    if (cc.size) {
+      let body = 'cc'
+      cc.forEach(u => {
+        body += ' @' + u
+      })
+      await context.github.issues.createComment(context.issue({ body }))
+    }
   })
-
-  // For more information on building apps:
-  // https://probot.github.io/docs/
-
-  // To get your app running against GitHub, see:
-  // https://probot.github.io/docs/development/
 }
