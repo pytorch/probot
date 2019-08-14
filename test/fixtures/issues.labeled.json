@@ -35,8 +35,8 @@
       {
         "id": 1500928154,
         "node_id": "MDU6TGFiZWwxNTAwOTI4MTU0",
-        "url": "https://api.github.com/repos/ezyang/testing-ideal-computing-machine/labels/module:%20binaries",
-        "name": "module: binaries",
+        "url": "https://api.github.com/repos/ezyang/testing-ideal-computing-machine/labels/testlabel",
+        "name": "testlabel",
         "color": "f98eef",
         "default": false
       }
@@ -58,8 +58,8 @@
   "label": {
     "id": 1500928154,
     "node_id": "MDU6TGFiZWwxNTAwOTI4MTU0",
-    "url": "https://api.github.com/repos/ezyang/testing-ideal-computing-machine/labels/module:%20binaries",
-    "name": "module: binaries",
+    "url": "https://api.github.com/repos/ezyang/testing-ideal-computing-machine/labels/testlabel",
+    "name": "testlabel",
     "color": "f98eef",
     "default": false
   },

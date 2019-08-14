@@ -1,5 +1,5 @@
 const subscriptions = {
-  'module: binaries': ['ezyang']
+  'testlabel': ['ezyang']
 }
 
 /**
