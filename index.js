@@ -9,6 +9,7 @@ const subscriptions = {
 module.exports = app => {
   app.on('issues.labeled', async context => {
     const labels = context.payload['issue']['labels'].map(e => e['name'])
+    context.log({ labels })
     const cc = new Set()
     labels.forEach(l => {
       if (l in subscriptions) {
@@ -18,21 +19,22 @@ module.exports = app => {
     if (cc.size) {
       const body = context.payload['issue']['body']
       const reCC = /cc( +@[a-zA-Z0-9-]+)+/
-      const oldCCString = body.match(reCC)[0]
-      if (oldCCString) {
-        console.log(oldCCString)
+      const oldCCMatch = body.match(reCC)
+      if (oldCCMatch) {
+        const oldCCString = oldCCMatch[0]
         let m
         const reUsername = /@([a-zA-Z0-9-]+)/g
         while ((m = reUsername.exec(oldCCString)) !== null) {
           cc.add(m[1])
         }
       }
-      console.log(cc)
+      context.log({ cc })
       let newCCString = 'cc'
       cc.forEach(u => {
         newCCString += ' @' + u
       })
-      const newBody = body.replace(reCC, newCCString)
+      const newBody = oldCCMatch ? body.replace(reCC, newCCString) : body + '\n\n' + newCCString
+      context.log({ newBody })
       await context.github.issues.update(context.issue({ body: newBody }))
     }
   })
