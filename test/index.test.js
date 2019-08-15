@@ -37,7 +37,7 @@ tracking_issue: 6
     nockTracker(`
 Some header text
 
-* testlabel - @ezyang
+* testlabel @ezyang
 `)
 
     const payload = require('./fixtures/issues.labeled') // testlabel
@@ -65,7 +65,7 @@ Some header text
     nockTracker(`
 Some header text
 
-* testlabel - @ezyang
+* testlabel @ezyang
 `)
 
     const payload = require('./fixtures/issues.labeled')

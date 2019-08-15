@@ -32,7 +32,7 @@ module.exports = app => {
       context.log.debug({ subsRows })
       const subscriptions = {}
       subsRows.forEach(row => {
-        const label = row.match(/^\* +([^-]+)-/)[1].trim()
+        const label = row.match(/^\* +([^@]+)/)[1].trim()
         const users = row.match(/@[a-zA-Z0-9-]+/g)
         subscriptions[label] = users.map((u) => u.substring(1))
       })
@@ -68,7 +68,7 @@ module.exports = app => {
       }
     })
     if (cc.size) {
-      const prev_size = cc.size
+      const prevSize = cc.size
       const body = context.payload['issue']['body']
       const reCC = /cc( +@[a-zA-Z0-9-]+)+/
       const oldCCMatch = body.match(reCC)
@@ -80,7 +80,7 @@ module.exports = app => {
           cc.add(m[1])
         }
       }
-      if (prev_size != cc.size || !oldCCMatch) {
+      if (prevSize !== cc.size || !oldCCMatch) {
         context.log({ cc })
         let newCCString = 'cc'
         cc.forEach(u => {
