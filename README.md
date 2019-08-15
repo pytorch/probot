@@ -2,6 +2,16 @@
 
 > A GitHub App built with [Probot](https://github.com/probot/probot) that Bot actions for PyTorch
 
+Add an issue to your project like https://github.com/pytorch/pytorch/issues/24422
+and add a `.github/pytorch-probot.yml` file with:
+
+```yml
+tracking_issue: 24422
+```
+
+Based on who is listed in the tracking issue, the bot will automatically
+CC people when labels are added to an issue.
+
 ## Setup
 
 ```sh
