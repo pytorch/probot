@@ -7,11 +7,8 @@ module.exports = app => {
 
   app.on('issues.labeled', async context => {
     if (!subscriptions) {
-      const subsPayload = await context.github.issues.get({
-        owner: 'ezyang',
-        repo: 'testing-ideal-computing-machine',
-        number: 6
-      })
+      const config = await context.config('pytorch-probot.yml')
+      const subsPayload = await context.github.issues.get(config.tracker)
       const subsText = subsPayload.data['body'].replace('\r', '')
       context.log({ subsText })
       const subsRows = subsText.match(/^\*.+/gm)
