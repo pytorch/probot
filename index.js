@@ -1,3 +1,5 @@
+const subscriptions = require('./lib/subscriptions.js')
+
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Application} app
@@ -26,18 +28,10 @@ module.exports = app => {
       context.log({ key }, 'loadSubscriptions')
       const config = await loadConfig(context)
       const subsPayload = await context.github.issues.get(context.repo({ number: config.tracking_issue }))
-      const subsText = subsPayload.data['body'].replace('\r', '')
-      context.log({ subsText })
-      const subsRows = subsText.match(/^\*.+/gm)
-      context.log.debug({ subsRows })
-      const subscriptions = {}
-      subsRows.forEach(row => {
-        const label = row.match(/^\* +([^@]+)/)[1].trim()
-        const users = row.match(/@[a-zA-Z0-9-]+/g)
-        subscriptions[label] = users.map((u) => u.substring(1))
-      })
-      context.log({ subscriptions })
-      repoSubscriptions[key] = subscriptions
+      const subsText = subsPayload.data['body']
+      app.log({ subsText })
+      repoSubscriptions[key] = subscriptions.parseSubscriptions(subsText)
+      app.log({ subscriptions: repoSubscriptions[key] })
     }
     return repoSubscriptions[key]
   }
