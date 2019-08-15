@@ -80,7 +80,7 @@ module.exports = app => {
           cc.add(m[1])
         }
       }
-      if (prev_size != cc.size) {
+      if (prev_size != cc.size || !oldCCMatch) {
         context.log({ cc })
         let newCCString = 'cc'
         cc.forEach(u => {
