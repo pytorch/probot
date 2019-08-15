@@ -14,7 +14,7 @@ module.exports = app => {
   async function loadConfig (context, force = false) {
     const key = repoKey(context)
     if (!(key in repoConfigs) || force) {
-      context.log({key}, "loadConfig")
+      context.log({ key }, 'loadConfig')
       repoConfigs[key] = await context.config('pytorch-probot.yml')
     }
     return repoConfigs[key]
@@ -23,9 +23,9 @@ module.exports = app => {
   async function loadSubscriptions (context, force = false) {
     const key = repoKey(context)
     if (!(key in repoSubscriptions) || force) {
-      context.log({key}, "loadSubscriptions")
+      context.log({ key }, 'loadSubscriptions')
       const config = await loadConfig(context)
-      const subsPayload = await context.github.issues.get(config.tracker)
+      const subsPayload = await context.github.issues.get(context.repo({ number: config.tracking_issue }))
       const subsText = subsPayload.data['body'].replace('\r', '')
       context.log({ subsText })
       const subsRows = subsText.match(/^\*.+/gm)
@@ -45,9 +45,7 @@ module.exports = app => {
   app.on('issues.edited', async context => {
     const config = await loadConfig(context)
     const issue = context.issue()
-    if (config.tracker.owner === issue.owner &&
-        config.tracker.repo === issue.repo &&
-        config.tracker.number === issue.number) {
+    if (config.tracking_issue === issue.number) {
       await loadSubscriptions(context, /* force */ true)
     }
   })
