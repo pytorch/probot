@@ -13,12 +13,26 @@ describe('My Probot app', () => {
     app.app = () => 'test'
   })
 
+  function nockTracker (contents) {
+    const payload = require('./fixtures/issue.json')
+    payload['body'] = contents
+    return nock('https://api.github.com')
+      .get('/repos/ezyang/testing-ideal-computing-machine/issues/6')
+      .reply(200, payload)
+  }
+
   test('add a cc when issue is labeled', async () => {
     nock('https://api.github.com')
       .post('/app/installations/1492531/access_tokens')
       .reply(200, { token: 'test' })
 
-    const payload = require('./fixtures/issues.labeled')
+    nockTracker(`
+Some header text
+
+* testlabel - @ezyang
+`)
+
+    const payload = require('./fixtures/issues.labeled') // testlabel
     payload['issue']['body'] = 'Arf arf'
 
     const scope = nock('https://api.github.com')
@@ -39,6 +53,12 @@ describe('My Probot app', () => {
     nock('https://api.github.com')
       .post('/app/installations/1492531/access_tokens')
       .reply(200, { token: 'test' })
+
+    nockTracker(`
+Some header text
+
+* testlabel - @ezyang
+`)
 
     const payload = require('./fixtures/issues.labeled')
     payload['issue']['body'] = 'Arf arf\n\ncc @moo @mar\nxxxx'
