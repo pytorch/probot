@@ -3,24 +3,61 @@
  * @param {import('probot').Application} app
  */
 module.exports = app => {
-  let subscriptions
+  const repoConfigs = {}
+  const repoSubscriptions = {}
 
-  app.on('issues.labeled', async context => {
-    if (!subscriptions) {
-      const config = await context.config('pytorch-probot.yml')
+  function repoKey (context) {
+    const repo = context.repo()
+    return repo.owner + '/' + repo.repo
+  }
+
+  async function loadConfig (context, force = false) {
+    const key = repoKey(context)
+    if (!(key in repoConfigs) || force) {
+      repoConfigs[key] = await context.config('pytorch-probot.yml')
+    }
+    return repoConfigs[key]
+  }
+
+  async function loadSubscriptions (context, force = false) {
+    const key = repoKey(context)
+    if (!(key in repoSubscriptions) || force) {
+      const config = await loadConfig(context)
       const subsPayload = await context.github.issues.get(config.tracker)
       const subsText = subsPayload.data['body'].replace('\r', '')
       context.log({ subsText })
       const subsRows = subsText.match(/^\*.+/gm)
       context.log.debug({ subsRows })
-      subscriptions = {}
+      const subscriptions = {}
       subsRows.forEach(row => {
         const label = row.match(/^\* +([^-]+)-/)[1].trim()
         const users = row.match(/@[a-zA-Z0-9-]+/g)
         subscriptions[label] = users.map((u) => u.substring(1))
       })
       context.log({ subscriptions })
+      repoSubscriptions[key] = subscriptions
     }
+    return repoSubscriptions[key]
+  }
+
+  app.on('issues.edited', async context => {
+    const config = await loadConfig(context)
+    const issue = context.issue()
+    if (config.tracker.owner === issue.owner &&
+        config.tracker.repo === issue.repo &&
+        config.tracker.number === issue.number) {
+      await loadSubscriptions(context, /* force */ true)
+    }
+  })
+
+  app.on('push', async context => {
+    if (context.payload.ref === 'refs/heads/master') {
+      await loadConfig(context, /* force */ true)
+    }
+  })
+
+  app.on('issues.labeled', async context => {
+    const subscriptions = await loadSubscriptions(context)
 
     const labels = context.payload['issue']['labels'].map(e => e['name'])
     context.log({ labels })
