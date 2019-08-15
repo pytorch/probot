@@ -8,9 +8,16 @@
 # Install dependencies
 yarn install
 
+# Run the tests
+yarn test
+
 # Run the bot
 yarn start
 ```
+
+If you want to smoketest the bot on a test repository, you'll need to
+create a GitHub app.  Go to the webpage from probot; it will walk
+through the process.
 
 ## Deploying
 
