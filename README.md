@@ -6,11 +6,20 @@
 
 ```sh
 # Install dependencies
-npm install
+yarn install
 
 # Run the bot
-npm start
+yarn start
 ```
+
+## Deploying
+
+```sh
+zip -FSr ../pytorch-probot.zip . -x '*.git*' '*.env*'
+s3cmd put ../pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
+```
+
+Then "Upload a file from Amazon S3" from the web UI at https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/pytorch-probot?tab=graph (using the above s3 url)
 
 ## Contributing
 
