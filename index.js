@@ -68,6 +68,7 @@ module.exports = app => {
       }
     })
     if (cc.size) {
+      const prev_size = cc.size
       const body = context.payload['issue']['body']
       const reCC = /cc( +@[a-zA-Z0-9-]+)+/
       const oldCCMatch = body.match(reCC)
@@ -79,14 +80,16 @@ module.exports = app => {
           cc.add(m[1])
         }
       }
-      context.log({ cc })
-      let newCCString = 'cc'
-      cc.forEach(u => {
-        newCCString += ' @' + u
-      })
-      const newBody = oldCCMatch ? body.replace(reCC, newCCString) : body + '\n\n' + newCCString
-      context.log({ newBody })
-      await context.github.issues.update(context.issue({ body: newBody }))
+      if (prev_size != cc.size) {
+        context.log({ cc })
+        let newCCString = 'cc'
+        cc.forEach(u => {
+          newCCString += ' @' + u
+        })
+        const newBody = oldCCMatch ? body.replace(reCC, newCCString) : body + '\n\n' + newCCString
+        context.log({ newBody })
+        await context.github.issues.update(context.issue({ body: newBody }))
+      }
     }
   })
 }
