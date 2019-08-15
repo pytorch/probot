@@ -14,8 +14,8 @@ describe('My Probot app', () => {
   })
 
   function nockTracker (contents) {
-    const config_payload = require('./fixtures/config.json')
-    config_payload['content'] = new Buffer(`
+    const configPayload = require('./fixtures/config.json')
+    configPayload['content'] = Buffer.from(`
 tracker:
   owner: ezyang
   repo: testing-ideal-computing-machine
@@ -23,7 +23,7 @@ tracker:
 `).toString('base64')
     nock('https://api.github.com')
       .get('/repos/ezyang/testing-ideal-computing-machine/contents/.github/pytorch-probot.yml')
-      .reply(200, config_payload)
+      .reply(200, configPayload)
 
     const payload = require('./fixtures/issue.json')
     payload['body'] = contents
