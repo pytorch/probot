@@ -69,12 +69,12 @@ Some header text
 `)
 
     const payload = require('./fixtures/issues.labeled')
-    payload['issue']['body'] = 'Arf arf\n\ncc @moo @mar\nxxxx'
+    payload['issue']['body'] = 'Arf arf\n\ncc @moo @foo/bar @mar\nxxxx'
 
     const scope = nock('https://api.github.com')
       .patch('/repos/ezyang/testing-ideal-computing-machine/issues/5', (body) => {
         expect(body).toMatchObject({
-          body: 'Arf arf\n\ncc @ezyang @moo @mar\nxxxx'
+          body: 'Arf arf\n\ncc @ezyang @moo @foo/bar @mar\nxxxx'
         })
         return true
       })

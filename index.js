@@ -64,12 +64,12 @@ module.exports = app => {
     if (cc.size) {
       const prevSize = cc.size
       const body = context.payload['issue']['body']
-      const reCC = /cc( +@[a-zA-Z0-9-]+)+/
+      const reCC = /cc( +@[a-zA-Z0-9-/]+)+/
       const oldCCMatch = body.match(reCC)
       if (oldCCMatch) {
         const oldCCString = oldCCMatch[0]
         let m
-        const reUsername = /@([a-zA-Z0-9-]+)/g
+        const reUsername = /@([a-zA-Z0-9-/]+)/g
         while ((m = reUsername.exec(oldCCString)) !== null) {
           cc.add(m[1])
         }

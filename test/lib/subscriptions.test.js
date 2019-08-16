@@ -18,6 +18,7 @@ As a courtesy to others, please do not edit the subscriptions of users who are n
 * module: dataloader @SsnL
 * topic: bc-breaking @ezyang @SsnL
 * topic: quansight @ezyang
+* module: quantization @pytorch/quantization
     `)).toStrictEqual({
       critical: [
         'ezyang'
@@ -52,6 +53,9 @@ As a courtesy to others, please do not edit the subscriptions of users who are n
       ],
       'topic: quansight': [
         'ezyang'
+      ],
+      'module: quantization': [
+        'pytorch/quantization'
       ]
     })
   })
