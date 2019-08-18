@@ -84,6 +84,37 @@ Some header text
 
     scope.done()
   })
+
+  test('mkldnn update bug', async () => {
+    nock('https://api.github.com')
+      .post('/app/installations/1492531/access_tokens')
+      .reply(200, { token: 'test' })
+
+    nockTracker(`* module: mkldnn @gujinghui @PenghuiCheng @XiaobingSuper @ezyang`)
+
+    const payload = require('./fixtures/issues.labeled')
+    payload['issue']['body'] = `its from master branch, seems related with mklml. any idea?
+
+cc @ezyang`
+    payload['issue']['labels'] = [
+      { name: 'module: mkldnn' }
+    ]
+
+    const scope = nock('https://api.github.com')
+      .patch('/repos/ezyang/testing-ideal-computing-machine/issues/5', (body) => {
+        expect(body).toMatchObject({
+          body: `its from master branch, seems related with mklml. any idea?
+
+cc @gujinghui @PenghuiCheng @XiaobingSuper @ezyang`
+        })
+        return true
+      })
+      .reply(200)
+
+    await probot.receive({ name: 'issues', payload })
+
+    scope.done()
+  })
 })
 
 // For more information about testing with Jest see:

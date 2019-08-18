@@ -63,21 +63,23 @@ module.exports = app => {
     })
     context.log({ cc: Array.from(cc) }, 'from subscriptions')
     if (cc.size) {
-      const prevSize = cc.size
       const body = context.payload['issue']['body']
       const reCC = /cc( +@[a-zA-Z0-9-/]+)+/
       const oldCCMatch = body.match(reCC)
+      const prevCC = new Set()
       if (oldCCMatch) {
         const oldCCString = oldCCMatch[0]
         context.log({ oldCCString }, 'previous cc string')
         let m
         const reUsername = /@([a-zA-Z0-9-/]+)/g
         while ((m = reUsername.exec(oldCCString)) !== null) {
+          prevCC.add(m[1])
           cc.add(m[1])
         }
-        context.log({ cc: Array.from(cc) }, 'after adding pre-existing ccs')
+        context.log({ prevCC: Array.from(prevCC) }, 'pre-existing ccs')
       }
-      if (prevSize !== cc.size || !oldCCMatch) {
+      // Invariant: prevCC is a subset of cc
+      if (prevCC.size !== cc.size) {
         let newCCString = 'cc'
         cc.forEach(u => {
           newCCString += ' @' + u
