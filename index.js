@@ -61,6 +61,7 @@ module.exports = app => {
         subscriptions[l].forEach(u => cc.add(u))
       }
     })
+    context.log({ cc: Array.from(cc) }, 'from subscriptions')
     if (cc.size) {
       const prevSize = cc.size
       const body = context.payload['issue']['body']
@@ -68,14 +69,15 @@ module.exports = app => {
       const oldCCMatch = body.match(reCC)
       if (oldCCMatch) {
         const oldCCString = oldCCMatch[0]
+        context.log({ oldCCString }, 'previous cc string')
         let m
         const reUsername = /@([a-zA-Z0-9-/]+)/g
         while ((m = reUsername.exec(oldCCString)) !== null) {
           cc.add(m[1])
         }
+        context.log({ cc: Array.from(cc) }, 'after adding pre-existing ccs')
       }
       if (prevSize !== cc.size || !oldCCMatch) {
-        context.log({ cc })
         let newCCString = 'cc'
         cc.forEach(u => {
           newCCString += ' @' + u
@@ -83,7 +85,11 @@ module.exports = app => {
         const newBody = oldCCMatch ? body.replace(reCC, newCCString) : body + '\n\n' + newCCString
         context.log({ newBody })
         await context.github.issues.update(context.issue({ body: newBody }))
+      } else {
+        context.log('no action: no change from existing cc list on issue')
       }
+    } else {
+      context.log('no action: cc list from subscription is empty')
     }
   })
 }
