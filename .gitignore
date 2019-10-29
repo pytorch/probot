@@ -87,6 +87,3 @@ typings/
 
 # DynamoDB Local files
 .dynamodb/
-
-# zeit dist (included only for release branch)
-dist
