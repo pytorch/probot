@@ -1,6 +1,10 @@
 # pytorch-probot
 
-> A GitHub App built with [Probot](https://github.com/probot/probot) that Bot actions for PyTorch
+A GitHub App built with [Probot](https://github.com/probot/probot) that implements bot actions for PyTorch
+
+This bot implements a few behaviors.
+
+## auto-cc-bot
 
 Add an issue to your project like https://github.com/pytorch/pytorch/issues/24422
 and add a `.github/pytorch-probot.yml` file with:
@@ -11,6 +15,13 @@ tracking_issue: 24422
 
 Based on who is listed in the tracking issue, the bot will automatically
 CC people when labels are added to an issue.
+
+## auto-label-bot
+
+* If an issue is labeled **high priority**, also label it
+  **triage review**
+* If an issue is labeled **topic: flaky-tests**, also label it
+  **high priority** and **triage review**
 
 ## Setup
 
