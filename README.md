@@ -25,11 +25,25 @@ yarn test
 yarn start
 ```
 
+## Live testing as a GitHub App
+
 If you want to smoketest the bot on a test repository, you'll need to
 create a GitHub app.  Go to the webpage from probot; it will walk
 through the process.
 
-## Deploying
+## Deploying GitHub Actions
+
+Although a GitHub App is convenient for testing, it requires an actual
+server to deploy in prod.  Previously we ran the server on AWS, but this
+deployment process was substantially more involved.  GitHub Actions
+deployment is simpler.  Follow the instructions at
+https://github.com/actions/toolkit/blob/master/docs/action-versioning.md
+
+## (DEFUNCT) Deploying to AWS
+
+Previously we deployed this bot to AWS Lambda.  We now deploy it with
+GitHub Actions.  However, these instructions might be useful if we need
+a lower latency version of the bot.
 
 ```sh
 zip -FSr ../pytorch-probot.zip . -x '*.git*' '*.env*'
