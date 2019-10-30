@@ -2,7 +2,11 @@
 
 A GitHub App built with [Probot](https://github.com/probot/probot) that implements bot actions for PyTorch
 
-This bot implements a few behaviors.
+This bot implements a few behaviors.  **This bot currently only
+implements idempotent behaviors (i.e., it is harmless if the bot process
+events multiple times.**  If you add support for non-idempotent
+behaviors, you need to make sure only the GitHub Action or AWS Lambda is
+enabled.
 
 ## auto-cc-bot
 
@@ -50,11 +54,12 @@ deployment process was substantially more involved.  GitHub Actions
 deployment is simpler.  Follow the instructions at
 https://github.com/actions/toolkit/blob/master/docs/action-versioning.md
 
-## (DEFUNCT) Deploying to AWS
+Right now the GitHub Actions deployment is a little rocky because
+massive queueing in the PyTorch repository means it takes something
+like 30min before actions are run.  So we are also running AWS
+side-by-side.
 
-Previously we deployed this bot to AWS Lambda.  We now deploy it with
-GitHub Actions.  However, these instructions might be useful if we need
-a lower latency version of the bot.
+## Deploying to AWS
 
 ```sh
 yarn --production
