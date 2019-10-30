@@ -46,6 +46,7 @@ GitHub Actions.  However, these instructions might be useful if we need
 a lower latency version of the bot.
 
 ```sh
+yarn --production
 zip -FSr ../pytorch-probot.zip . -x '*.git*' '*.env*'
 s3cmd put ../pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
 ```
