@@ -26,6 +26,7 @@ module.exports = app => {
     // eventually quiesce, beware if you remove labels though!
     switch (label) {
       case 'high priority':
+      case 'critical':
         addLabel('triage review')
         break;
       case 'topic: flaky-tests':

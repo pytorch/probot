@@ -1,6 +1,14 @@
 # pytorch-probot
 
-> A GitHub App built with [Probot](https://github.com/probot/probot) that Bot actions for PyTorch
+A GitHub App built with [Probot](https://github.com/probot/probot) that implements bot actions for PyTorch
+
+This bot implements a few behaviors.  **This bot currently only
+implements idempotent behaviors (i.e., it is harmless if the bot process
+events multiple times.**  If you add support for non-idempotent
+behaviors, you need to make sure only the GitHub Action or AWS Lambda is
+enabled.
+
+## auto-cc-bot
 
 Add an issue to your project like https://github.com/pytorch/pytorch/issues/24422
 and add a `.github/pytorch-probot.yml` file with:
@@ -11,6 +19,13 @@ tracking_issue: 24422
 
 Based on who is listed in the tracking issue, the bot will automatically
 CC people when labels are added to an issue.
+
+## auto-label-bot
+
+* If an issue is labeled **high priority**, also label it
+  **triage review**
+* If an issue is labeled **topic: flaky-tests**, also label it
+  **high priority** and **triage review**
 
 ## Setup
 
@@ -39,13 +54,15 @@ deployment process was substantially more involved.  GitHub Actions
 deployment is simpler.  Follow the instructions at
 https://github.com/actions/toolkit/blob/master/docs/action-versioning.md
 
-## (DEFUNCT) Deploying to AWS
+Right now the GitHub Actions deployment is a little rocky because
+massive queueing in the PyTorch repository means it takes something
+like 30min before actions are run.  So we are also running AWS
+side-by-side.
 
-Previously we deployed this bot to AWS Lambda.  We now deploy it with
-GitHub Actions.  However, these instructions might be useful if we need
-a lower latency version of the bot.
+## Deploying to AWS
 
 ```sh
+yarn --production
 zip -FSr ../pytorch-probot.zip . -x '*.git*' '*.env*'
 s3cmd put ../pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
 ```
