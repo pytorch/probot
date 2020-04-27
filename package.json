@@ -13,30 +13,51 @@
     "probot-app"
   ],
   "scripts": {
-    "dev": "nodemon",
-    "start": "probot run ./index.js",
-    "lint": "standard --fix",
+    "build": "tsc",
+    "build:watch": "tsc && (tsc -w --preserveWatchOutput & nodemon)",
+    "dev": "yarn run build:watch",
+    "start": "probot run ./dist/index.js",
+    "lint": "eslint src/**/*.ts",
     "test": "jest",
-    "test:watch": "jest --watch --notify --notifyMode=change --coverage"
+    "test:watch": "jest --watch --notify --notifyMode=change --coverage",
+    "format": "prettier --write **/*.ts",
+    "format-check": "prettier --check **/*ts"
   },
   "dependencies": {
     "@probot/serverless-lambda": "^0.3.0",
-    "probot": "^7.2.0",
+    "probot": "^9",
     "probot-actions-adapter": "^1.0.2"
   },
   "devDependencies": {
+    "@types/bunyan": "^1.8.6",
+    "@types/jest": "^24.0.23",
+    "@types/node": "^12.7.12",
+    "@typescript-eslint/parser": "^2.30.0",
+    "@zeit/ncc": "^0.20.5",
+    "eslint": "^5.16.0",
+    "eslint-plugin-typescript": "^0.14.0",
+    "eslint-plugin-github": "^2.0.0",
+    "eslint-plugin-jest": "^22.21.0",
     "jest": "^24.0.0",
+    "jest-circus": "^24.9.0",
     "nock": "^10.0.0",
     "nodemon": "^1.17.2",
+    "prettier": "^2.0.5",
     "smee-client": "^1.0.2",
-    "standard": "^12.0.1"
+    "standard": "^12.0.1",
+    "ts-jest": "^24.2.0",
+    "typescript": "^3.6.4"
   },
   "engines": {
     "node": ">= 8.3.0"
   },
   "standard": {
+    "parser": "@typescript-eslint/parser",
     "env": [
       "jest"
+    ],
+    "plugins": [
+      "typescript"
     ]
   },
   "nodemonConfig": {
