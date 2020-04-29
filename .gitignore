@@ -87,3 +87,8 @@ typings/
 
 # DynamoDB Local files
 .dynamodb/
+
+# Private key files
+*.pem
+
+dist/

@@ -9,4 +9,4 @@ function runBot(app: Application): void {
   triggerCircleCiBot(app);
 }
 
-export default runBot;
+export = runBot;
