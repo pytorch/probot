@@ -91,4 +91,8 @@ typings/
 # Private key files
 *.pem
 
+# Compiled typescript files
 dist/
+
+# Build artifacts for deployment
+artifacts/
