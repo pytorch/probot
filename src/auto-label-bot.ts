@@ -1,4 +1,6 @@
-module.exports = app => {
+import * as probot from 'probot';
+
+function myBot(app: probot.Application): void {
   app.on('issues.labeled', async context => {
     // Careful!  For most labels, we only apply actions *when the issue
     // is added*; not if the issue is pre-existing (for example, high
@@ -6,14 +8,14 @@ module.exports = app => {
     // from triage review, we shouldn't readd triage review the next
     // time the issue is labeled).
 
-    const label = context.payload["label"]["name"]
-    const labels = context.payload['issue']['labels'].map(e => e['name'])
-    context.log({ label, labels })
+    const label = context.payload['label']['name'];
+    const labels = context.payload['issue']['labels'].map(e => e['name']);
+    context.log({label, labels});
 
     const labelSet = new Set(labels);
 
-    newLabels = []
-    function addLabel(l) {
+    const newLabels = [];
+    function addLabel(l: string): void {
       if (!labelSet.has(l)) {
         newLabels.push(l);
         labelSet.add(l);
@@ -27,16 +29,18 @@ module.exports = app => {
     switch (label) {
       case 'high priority':
       case 'critical':
-        addLabel('triage review')
+        addLabel('triage review');
         break;
       case 'topic: flaky-tests':
-        addLabel('high priority')
-        addLabel('triage review')
+        addLabel('high priority');
+        addLabel('triage review');
         break;
     }
 
     if (newLabels.length) {
-      await context.github.issues.addLabels(context.issue({ labels: newLabels }))
+      await context.github.issues.addLabels(context.issue({labels: newLabels}));
     }
-  })
+  });
 }
+
+export default myBot;
