@@ -1,5 +1,5 @@
 // Require the adapter
-import {adapt} from 'probot-actions-adapter';
+import adapt from 'probot-actions-adapter';
 
 // Require your Probot app's entrypoint, usually this is just index.js
 import probot from './index';
