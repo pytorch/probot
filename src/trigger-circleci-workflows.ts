@@ -17,7 +17,7 @@ async function loadConfig(context: probot.Context): Promise<object> {
       return {};
     }
     context.log.debug({configObj}, 'loadConfig');
-    repoMap.set(repoKey, configObj['labels_to_circle_params']);
+    repoMap.set(repoKey, configObj);
   }
   return repoMap.get(repoKey);
 }
@@ -70,12 +70,21 @@ export function circlePipelineEndpoint(repoKey: string): string {
   return `/api/v2/project/github/${repoKey}/pipeline`;
 }
 
-async function runBot(context: probot.Context): Promise<void> {
+export function isOnFork(context: probot.Context): boolean {
+  const fork = context.payload['pull_request']['head']['repo']['fork'];
+  context.log.debug({fork}, 'isOnFork');
+  if (fork) {
+    context.log.info(
+      `PR ${context.payload['pull_request']['html_url']} came from a fork, refusing to do work`
+    );
+  }
+  return fork;
+}
+
+async function runOnPR(context: probot.Context): Promise<void> {
   try {
-    if (context.payload['pull_request']['head']['repo']['fork']) {
-      context.log.warn(
-        `PR ${context.payload['pull_request']['html_url']} came from a fork, refusing to do work`
-      );
+    if (isOnFork(context)) {
+      // Don't do anything
       return;
     }
     const config = await loadConfig(context);
@@ -89,8 +98,8 @@ async function runBot(context: probot.Context): Promise<void> {
     const labels = await getAppliedLabels(context);
     const parameters = {};
     for (const label of labels) {
-      if (label in config) {
-        parameters[config[label]] = true;
+      if (label in config['labels_to_circle_params']) {
+        parameters[config['labels_to_circle_params'][label]] = true;
       }
     }
     context.log.debug({config, labels, parameters}, 'runBot');
@@ -106,9 +115,50 @@ async function runBot(context: probot.Context): Promise<void> {
   }
 }
 
+export function genHelpComment(config: object): string {
+  const availableLabels = Object.keys(config)
+    .map(label => {
+      return `* \`${label}\``;
+    })
+    .join('\n');
+  return `## :robot: This pull request has options for additional testing! :robot:
+
+Apply the following labels to run more tests for your pull request:
+${availableLabels}
+
+**NOTE**: These may be out of date, for a full list of options consult your repositories [configuration](../blob/master/.github/${configName})
+
+---
+Comment made with [pytorch-probot](https://github.com/pytorch/pytorch-probot)`;
+}
+async function postHelpComment(context: probot.Context): Promise<void> {
+  context.log.debug('Posting help comment!', 'postHelpComment');
+  if (isOnFork(context)) {
+    // Don't do anything
+    return;
+  }
+  const config = await loadConfig(context);
+  if (Object.keys(config).length === 0) {
+    context.log.debug(
+      `No configuration found for repository ${utils.repoKey(context)}`,
+      'trigger-circleci-workflows'
+    );
+    return;
+  }
+  const body = genHelpComment(config['labels_to_circle_params']);
+  context.log.debug({body}, 'postHelpComment');
+  const createCommentResp = await context.github.issues.createComment(
+    context.issue({body})
+  );
+  context.log.info(
+    `Created usage comment on issue ${createCommentResp.data['html_url']}`
+  );
+}
+
 export function myBot(app: probot.Application): void {
-  app.on('pull_request.labeled', runBot);
-  app.on('pull_request.synchronize', runBot);
+  app.on('pull_request.opened', postHelpComment);
+  app.on('pull_request.labeled', runOnPR);
+  app.on('pull_request.synchronize', runOnPR);
 }
 
 export default myBot;
