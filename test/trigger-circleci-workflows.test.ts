@@ -38,13 +38,40 @@ describe('trigger-circleci-workflows', () => {
     delete process.env.CIRCLE_TOKEN;
   });
 
-  test('test with pull_request.labeled', async () => {
+  test('test with pull_request.labeled (specific labels)', async () => {
+    const payload = require('./fixtures/pull_request.labeled.json');
+    payload['pull_request']['number'] = 1;
     payload['pull_request']['head']['ref'] = 'test_branch';
     payload['pull_request']['labels'] = [
       {name: 'ci/binaries'},
-      {name: 'ci/bleh'},
-      {name: 'ci/foo'}
+      {name: 'ci/bleh'}
     ];
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            branch: 'test_branch',
+            parameters: {
+              run_binaries_tests: true,
+              run_bleh_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'pull_request', payload, id: '2'});
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  test('test with pull_request.labeled (ci/all)', async () => {
+    const payload = require('./fixtures/pull_request.labeled.json');
+    payload['pull_request']['number'] = 1;
+    payload['pull_request']['head']['ref'] = 'test_branch';
+    payload['pull_request']['labels'] = [{name: 'ci/all'}];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
       .post(
         triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),

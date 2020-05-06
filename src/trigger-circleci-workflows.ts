@@ -17,7 +17,7 @@ async function loadConfig(context: probot.Context): Promise<object> {
       return {};
     }
     context.log.debug({configObj}, 'loadConfig');
-    repoMap.set(repoKey, configObj['labels_to_circle_params']);
+    repoMap.set(repoKey, configObj);
   }
   return repoMap.get(repoKey);
 }
@@ -62,6 +62,7 @@ async function triggerCircleCI(
       }
     });
   context.log.info(
+    {data},
     `Build triggered successfully for ${context.payload['pull_request']['html_url']}`
   );
 }
@@ -79,18 +80,23 @@ async function runBot(context: probot.Context): Promise<void> {
       return;
     }
     const config = await loadConfig(context);
-    if (Object.keys(config).length === 0) {
+    if (
+      Object.keys(config).length === 0 ||
+      !config['labels_to_circle_params']
+    ) {
       context.log.debug(
         `No configuration found for repository ${utils.repoKey(context)}`,
         'trigger-circleci-workflows'
       );
       return;
     }
+    const labelsToParams = config['labels_to_circle_params'];
     const labels = await getAppliedLabels(context);
     const parameters = {};
-    for (const label of labels) {
-      if (label in config) {
-        parameters[config[label]] = true;
+    for (const label of Object.keys(labelsToParams)) {
+      // ci/all is a special label that will set all to true
+      if (labels.includes('ci/all') || labels.includes(label)) {
+        parameters[labelsToParams[label]] = true;
       }
     }
     context.log.debug({config, labels, parameters}, 'runBot');
