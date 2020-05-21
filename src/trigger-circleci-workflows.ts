@@ -71,6 +71,23 @@ export function circlePipelineEndpoint(repoKey: string): string {
   return `/api/v2/project/github/${repoKey}/pipeline`;
 }
 
+export function genParameters(
+  config: object,
+  context: probot.Context,
+  appliedLabels: string[]
+): object {
+  context.log.debug({config, appliedLabels}, 'genParameters');
+  const parameters = {};
+  const labelsToParams = config['labels_to_circle_params'];
+  for (const label of Object.keys(labelsToParams)) {
+    // ci/all is a special label that will set all to true
+    if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
+      parameters[labelsToParams[label]] = true;
+    }
+  }
+  return parameters;
+}
+
 async function runBot(context: probot.Context): Promise<void> {
   try {
     if (context.payload['pull_request']['head']['repo']['fork']) {
@@ -90,15 +107,8 @@ async function runBot(context: probot.Context): Promise<void> {
       );
       return;
     }
-    const labelsToParams = config['labels_to_circle_params'];
     const labels = await getAppliedLabels(context);
-    const parameters = {};
-    for (const label of Object.keys(labelsToParams)) {
-      // ci/all is a special label that will set all to true
-      if (labels.includes('ci/all') || labels.includes(label)) {
-        parameters[labelsToParams[label]] = true;
-      }
-    }
+    const parameters = genParameters(config, context, labels);
     context.log.debug({config, labels, parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
       await triggerCircleCI(context, parameters);
