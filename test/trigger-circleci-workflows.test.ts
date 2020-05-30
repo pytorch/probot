@@ -8,9 +8,18 @@ nock.disableNetConnect();
 
 const EXAMPLE_CONFIG = `
 labels_to_circle_params:
-  ci/binaries: run_binaries_tests
-  ci/bleh: run_bleh_tests
-  ci/foo: run_foo_tests
+  ci/binaries:
+    parameter: run_binaries_tests
+    default_true_on:
+      branches:
+        - nightly
+        - ci-all/.*
+      tags:
+        - v[0-9]+(\.[0-9]+)*-rc[0-9]+
+  ci/bleh:
+    parameter: run_bleh_tests
+  ci/foo:
+    parameter: run_foo_tests
 `;
 
 const EXAMPLE_REPO_KEY = 'seemethere/test-repo';
@@ -29,8 +38,6 @@ describe('trigger-circleci-workflows', () => {
       EXAMPLE_CONFIG,
       EXAMPLE_REPO_KEY
     );
-    payload = require('./fixtures/pull_request.labeled.json');
-    payload['pull_request']['number'] = 1;
   });
 
   afterEach(() => {
@@ -90,6 +97,75 @@ describe('trigger-circleci-workflows', () => {
       .reply(201);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});
+
+    scope.done();
+  });
+
+  test('test with push (refs/heads/nightly)', async () => {
+    const payload = require('./fixtures/push.json');
+    payload['ref'] = 'refs/heads/nightly';
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            branch: 'nightly',
+            parameters: {
+              run_binaries_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'push', payload, id: '2'});
+
+    scope.done();
+  });
+
+  test('test with push (refs/heads/ci-all/bleh)', async () => {
+    const payload = require('./fixtures/push.json');
+    payload['ref'] = 'refs/heads/ci-all/bleh';
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            branch: 'ci-all/bleh',
+            parameters: {
+              run_binaries_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'push', payload, id: '2'});
+
+    scope.done();
+  });
+
+  test('test with push (/refs/tags/v1.5.0-rc1)', async () => {
+    const payload = require('./fixtures/push.json');
+    payload['ref'] = 'refs/tags/v1.5.0-rc1';
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            tag: 'v1.5.0-rc1',
+            parameters: {
+              run_binaries_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'push', payload, id: '2'});
 
     scope.done();
   });

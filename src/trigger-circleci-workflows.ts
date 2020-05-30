@@ -22,6 +22,20 @@ async function loadConfig(context: probot.Context): Promise<object> {
   return repoMap.get(repoKey);
 }
 
+function isValidConfig(context: probot.Context, config: object): boolean {
+  if (Object.keys(config).length === 0 || !config['labels_to_circle_params']) {
+    context.log.debug(
+      `No valid configuration found for repository ${utils.repoKey(context)}`
+    );
+    return false;
+  }
+  return true;
+}
+
+function stripReference(reference: string): string {
+  return reference.replace(/refs\/(heads|tags)\//, '');
+}
+
 async function getAppliedLabels(context: probot.Context): Promise<string[]> {
   const appliedLabels = new Array<string>();
   // Check if we already have the applied labels in our context payload
@@ -36,11 +50,9 @@ async function getAppliedLabels(context: probot.Context): Promise<string[]> {
 
 async function triggerCircleCI(
   context: probot.Context,
-  parameters: object
+  data: object
 ): Promise<void> {
   const repoKey = utils.repoKey(context);
-  const branch = context.payload['pull_request']['head']['ref'];
-  const data = {branch, parameters};
   context.log.debug({repoKey, data}, 'triggerCircleCI');
   await axios
     .post(`${circleAPIUrl}${circlePipelineEndpoint(repoKey)}`, data, {
@@ -61,17 +73,61 @@ async function triggerCircleCI(
         );
       }
     });
-  context.log.info(
-    {data},
-    `Build triggered successfully for ${context.payload['pull_request']['html_url']}`
-  );
+  context.log.info({data}, `Build triggered successfully for ${repoKey}`);
 }
 
 export function circlePipelineEndpoint(repoKey: string): string {
   return `/api/v2/project/github/${repoKey}/pipeline`;
 }
 
-async function runBot(context: probot.Context): Promise<void> {
+export function genCircleParametersForPR(
+  config: object,
+  context: probot.Context,
+  appliedLabels: string[]
+): object {
+  context.log.debug({config, appliedLabels}, 'genParametersForPR');
+  const parameters = {};
+  const labelsToParams = config['labels_to_circle_params'];
+  for (const label of Object.keys(labelsToParams)) {
+    // ci/all is a special label that will set all to true
+    if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
+      parameters[labelsToParams[label].parameter] = true;
+    }
+  }
+  return parameters;
+}
+
+function genCircleParametersForPush(
+  config: object,
+  context: probot.Context
+): object {
+  const parameters = {};
+  const labelsToParams = config['labels_to_circle_params'];
+  const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
+  const strippedRef: string = stripReference(context.payload['ref']);
+  for (const label of Object.keys(labelsToParams)) {
+    context.log.debug({label}, 'genParametersForPush');
+    if (!labelsToParams[label]['default_true_on']) {
+      context.log.debug(
+        `No default_true_on found for ${label}`,
+        'genParametersForPush'
+      );
+      continue;
+    }
+    const defaultTrueOn = labelsToParams[label]['default_true_on'];
+    const refsToMatch = onTag ? 'tags' : 'branches';
+    context.log.debug({defaultTrueOn, refsToMatch, strippedRef});
+    for (const pattern of defaultTrueOn[refsToMatch]) {
+      context.log.debug({pattern}, 'genParametersForPush');
+      if (strippedRef.match(pattern)) {
+        parameters[labelsToParams[label].parameter] = true;
+      }
+    }
+  }
+  return parameters;
+}
+
+async function runBotForPR(context: probot.Context): Promise<void> {
   try {
     if (context.payload['pull_request']['head']['repo']['fork']) {
       context.log.warn(
@@ -80,41 +136,53 @@ async function runBot(context: probot.Context): Promise<void> {
       return;
     }
     const config = await loadConfig(context);
-    if (
-      Object.keys(config).length === 0 ||
-      !config['labels_to_circle_params']
-    ) {
-      context.log.debug(
-        `No configuration found for repository ${utils.repoKey(context)}`,
-        'trigger-circleci-workflows'
-      );
+    if (!isValidConfig(context, config)) {
       return;
     }
-    const labelsToParams = config['labels_to_circle_params'];
     const labels = await getAppliedLabels(context);
-    const parameters = {};
-    for (const label of Object.keys(labelsToParams)) {
-      // ci/all is a special label that will set all to true
-      if (labels.includes('ci/all') || labels.includes(label)) {
-        parameters[labelsToParams[label]] = true;
-      }
-    }
+    const parameters = genCircleParametersForPR(config, context, labels);
     context.log.debug({config, labels, parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
-      await triggerCircleCI(context, parameters);
+      await triggerCircleCI(context, {
+        branch: context.payload['pull_request']['head']['ref'],
+        parameters
+      });
     } else {
       context.log.info(
         `No labels applied for ${context.payload['number']}, not triggering an extra CircleCI build`
       );
     }
   } catch (err) {
-    context.log.error(err, 'trigger-circleci-workflows');
+    context.log.error(err, 'runBotForPR');
+  }
+}
+
+async function runBotForPush(context: probot.Context): Promise<void> {
+  try {
+    context.log.debug('Recieved push!');
+    const config = await loadConfig(context);
+    if (!isValidConfig(context, config)) {
+      return;
+    }
+    const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
+    const parameters = genCircleParametersForPush(config, context);
+    const refKey: string = onTag ? 'tag' : 'branch';
+    context.log.debug({parameters}, 'runBot');
+    if (Object.keys(parameters).length !== 0) {
+      await triggerCircleCI(context, {
+        [refKey]: stripReference(context.payload['ref']),
+        parameters
+      });
+    }
+  } catch (err) {
+    context.log.error(err, 'runBotForPush');
   }
 }
 
 export function myBot(app: probot.Application): void {
-  app.on('pull_request.labeled', runBot);
-  app.on('pull_request.synchronize', runBot);
+  app.on('pull_request.labeled', runBotForPR);
+  app.on('pull_request.synchronize', runBotForPR);
+  app.on('push', runBotForPush);
 }
 
 export default myBot;
