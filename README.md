@@ -27,6 +27,35 @@ CC people when labels are added to an issue.
 * If an issue is labeled **topic: flaky-tests**, also label it
   **high priority** and **triage review**
 
+## trigger-circleci-workflows
+
+* Trigger circleci workflows based off of labeling events / push events
+
+Configuration (`.github/pytorch-circleci-labels.yml`) should look similar to this:
+```yml
+labels_to_circle_params:
+  # Refers to github labels
+  ci/binaries:
+    # Refers to circleci parameters
+    # For circleci documentation on pipeline parameters check:
+    #      https://circleci.com/docs/2.0/pipeline-variables/#pipeline-parameters-in-configuration
+    parameter: run_binaries_tests
+    # [[optional]] Automatically trigger workflows with parameters on push
+    default_true_on:
+      branches:
+        - nightly
+        # Regex is allowed as well
+        - ci-all/.*
+      # Even works on tags!
+      tags:
+        - v[0-9]+(\.[0-9]+)*-rc[0-9]+
+  # Multiple label / parameters can be defined
+  ci/bleh:
+    parameter: run_bleh_tests
+  ci/foo:
+    parameter: run_foo_tests
+```
+
 ## Setup
 
 ```sh
