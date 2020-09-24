@@ -129,11 +129,9 @@ function genCircleParametersForPush(
 
 async function runBotForPR(context: probot.Context): Promise<void> {
   try {
+    let triggerBranch = context.payload['pull_request']['head']['ref'];
     if (context.payload['pull_request']['head']['repo']['fork']) {
-      context.log.warn(
-        `PR ${context.payload['pull_request']['html_url']} came from a fork, refusing to do work`
-      );
-      return;
+      triggerBranch = `pull/${context.payload['pull_request']['number']}/head`;
     }
     const config = await loadConfig(context);
     if (!isValidConfig(context, config)) {
@@ -144,7 +142,7 @@ async function runBotForPR(context: probot.Context): Promise<void> {
     context.log.debug({config, labels, parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
       await triggerCircleCI(context, {
-        branch: context.payload['pull_request']['head']['ref'],
+        branch: triggerBranch,
         parameters
       });
     } else {
