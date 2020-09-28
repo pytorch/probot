@@ -101,6 +101,64 @@ describe('trigger-circleci-workflows', () => {
     scope.done();
   });
 
+  test('test with pull_request.labeled (fork) (specific labels)', async () => {
+    const payload = require('./fixtures/pull_request.labeled.json');
+    payload['pull_request']['head']['repo']['fork'] = true;
+    payload['pull_request']['number'] = 1;
+    payload['pull_request']['head']['ref'] = 'test_branch';
+    payload['pull_request']['labels'] = [
+      {name: 'ci/binaries'},
+      {name: 'ci/bleh'}
+    ];
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            branch: 'pull/1/head',
+            parameters: {
+              run_binaries_tests: true,
+              run_bleh_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'pull_request', payload, id: '2'});
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  test('test with pull_request.labeled (fork) (ci/all)', async () => {
+    const payload = require('./fixtures/pull_request.labeled.json');
+    payload['pull_request']['head']['repo']['fork'] = true;
+    payload['pull_request']['number'] = 1;
+    payload['pull_request']['head']['ref'] = 'test_branch';
+    payload['pull_request']['labels'] = [{name: 'ci/all'}];
+    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
+      .post(
+        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
+        (body: any) => {
+          expect(body).toStrictEqual({
+            branch: 'pull/1/head',
+            parameters: {
+              run_binaries_tests: true,
+              run_bleh_tests: true,
+              run_foo_tests: true
+            }
+          });
+          return true;
+        }
+      )
+      .reply(201);
+
+    await probot.receive({name: 'pull_request', payload, id: '2'});
+
+    scope.done();
+  });
+
   test('test with push (refs/heads/nightly)', async () => {
     const payload = require('./fixtures/push.json');
     payload['ref'] = 'refs/heads/nightly';
