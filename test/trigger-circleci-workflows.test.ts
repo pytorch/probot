@@ -16,6 +16,8 @@ labels_to_circle_params:
         - ci-all/.*
       tags:
         - v[0-9]+(\.[0-9]+)*-rc[0-9]+
+    set_to_false:
+      - default
   ci/bleh:
     parameter: run_bleh_tests
   ci/foo:
@@ -61,7 +63,8 @@ describe('trigger-circleci-workflows', () => {
             branch: 'test_branch',
             parameters: {
               run_binaries_tests: true,
-              run_bleh_tests: true
+              run_bleh_tests: true,
+              default: false
             }
           });
           return true;
@@ -88,7 +91,8 @@ describe('trigger-circleci-workflows', () => {
             parameters: {
               run_binaries_tests: true,
               run_bleh_tests: true,
-              run_foo_tests: true
+              run_foo_tests: true,
+              default: false
             }
           });
           return true;
@@ -118,7 +122,8 @@ describe('trigger-circleci-workflows', () => {
             branch: 'pull/1/head',
             parameters: {
               run_binaries_tests: true,
-              run_bleh_tests: true
+              run_bleh_tests: true,
+              default: false
             }
           });
           return true;
@@ -146,7 +151,8 @@ describe('trigger-circleci-workflows', () => {
             parameters: {
               run_binaries_tests: true,
               run_bleh_tests: true,
-              run_foo_tests: true
+              run_foo_tests: true,
+              default: false
             }
           });
           return true;
@@ -169,7 +175,8 @@ describe('trigger-circleci-workflows', () => {
           expect(body).toStrictEqual({
             branch: 'nightly',
             parameters: {
-              run_binaries_tests: true
+              run_binaries_tests: true,
+              default: false
             }
           });
           return true;
@@ -192,7 +199,8 @@ describe('trigger-circleci-workflows', () => {
           expect(body).toStrictEqual({
             branch: 'ci-all/bleh',
             parameters: {
-              run_binaries_tests: true
+              run_binaries_tests: true,
+              default: false
             }
           });
           return true;
@@ -215,7 +223,8 @@ describe('trigger-circleci-workflows', () => {
           expect(body).toStrictEqual({
             tag: 'v1.5.0-rc1',
             parameters: {
-              run_binaries_tests: true
+              run_binaries_tests: true,
+              default: false
             }
           });
           return true;
