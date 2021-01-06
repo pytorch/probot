@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@probot/serverless-lambda": "^0.3.0",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "probot": "^9",
     "probot-actions-adapter": "^1.0.2"
   },
