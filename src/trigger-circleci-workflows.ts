@@ -92,6 +92,14 @@ export function genCircleParametersForPR(
     // ci/all is a special label that will set all to true
     if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
       parameters[labelsToParams[label].parameter] = true;
+      if (labelsToParams[label]['set_to_false']) {
+        const falseParams = labelsToParams[label]['set_to_false'];
+        // There's potential for labels to override each other which we should
+        // probably be careful of
+        for (const falseLabel of Object.keys(falseParams)) {
+          parameters[falseParams[falseLabel]] = false;
+        }
+      }
     }
   }
   return parameters;
@@ -121,6 +129,14 @@ function genCircleParametersForPush(
       context.log.debug({pattern}, 'genParametersForPush');
       if (strippedRef.match(pattern)) {
         parameters[labelsToParams[label].parameter] = true;
+        if (labelsToParams[label]['set_to_false']) {
+          const falseParams = labelsToParams[label]['set_to_false'];
+          // There's potential for labels to override each other which we should
+          // probably be careful of
+          for (const falseLabel of Object.keys(falseParams)) {
+            parameters[falseParams[falseLabel]] = false;
+          }
+        }
       }
     }
   }
