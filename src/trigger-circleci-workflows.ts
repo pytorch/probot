@@ -27,7 +27,7 @@ async function loadConfig(context: probot.Context): Promise<Config | {}> {
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
     context.log.debug(`Grabbing config for ${repoKey}`, 'loadConfig');
-    configObj = await context.config(configName) as Config | {};
+    configObj = (await context.config(configName)) as Config | {};
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
     }
@@ -37,7 +37,10 @@ async function loadConfig(context: probot.Context): Promise<Config | {}> {
   return repoMap.get(repoKey);
 }
 
-function isValidConfig(context: probot.Context, config: Config | {}): config is Config {
+function isValidConfig(
+  context: probot.Context,
+  config: Config | {}
+): config is Config {
   if (Object.keys(config).length === 0 || !config['labels_to_circle_params']) {
     context.log.debug(
       `No valid configuration found for repository ${utils.repoKey(context)}`
