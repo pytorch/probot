@@ -1,3 +1,4 @@
+import {promises as fs} from 'fs';
 import nock from 'nock';
 import {Probot} from 'probot';
 
@@ -33,7 +34,34 @@ labels_to_circle_params:
     parameter: run_foo_tests
 `;
 
-const EXAMPLE_REPO_KEY = 'seemethere/test-repo';
+interface Example {
+  payload: object;
+  endpoint: string;
+}
+
+// Prior to the existence of this `prepare` function, the tests in this suite
+// were failing in very strange ways when run together (but not when run in
+// isolation). This seemed to be caused by the fact that all the tests were
+// `nock`ing the same endpoint of the same CircleCI URL, so one test would
+// receive the CircleCI parameters that corresponded to a different test. No
+// idea how CI was previously passing on `master`. Anyway, this fixes the issue
+// by enforcing that every test rename the example repo to a unique name,
+// resulting in a unique CircleCI endpoint.
+const usedNames: Set<string> = new Set();
+async function prepare(fixture: string, repoName: string): Promise<Example> {
+  expect(usedNames.has(repoName)).toBe(false);
+  usedNames.add(repoName);
+  const repoFullName = `seemethere/${repoName}`;
+  utils.mockConfig(triggerCircleBot.configName, EXAMPLE_CONFIG, repoFullName);
+  const payload = JSON.parse(
+    (await fs.readFile(`test/fixtures/${fixture}.json`, 'utf8')).replace(
+      /test-repo/g,
+      repoName
+    )
+  );
+  const endpoint = triggerCircleBot.circlePipelineEndpoint(repoFullName);
+  return {payload, endpoint};
+}
 
 describe('trigger-circleci-workflows', () => {
   let probot: Probot;
@@ -44,11 +72,6 @@ describe('trigger-circleci-workflows', () => {
     probot.load(triggerCircleBot.myBot);
     process.env.CIRCLE_TOKEN = 'dummy_token';
     utils.mockAccessToken();
-    utils.mockConfig(
-      triggerCircleBot.configName,
-      EXAMPLE_CONFIG,
-      EXAMPLE_REPO_KEY
-    );
   });
 
   afterEach(() => {
@@ -57,7 +80,10 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with pull_request.labeled (specific labels)', async () => {
-    const payload = require('./fixtures/pull_request.labeled.json');
+    const {payload, endpoint} = await prepare(
+      'pull_request.labeled',
+      'pr-labeled-specific'
+    );
     payload['pull_request']['number'] = 1;
     payload['pull_request']['head']['ref'] = 'test_branch';
     payload['pull_request']['labels'] = [
@@ -65,20 +91,17 @@ describe('trigger-circleci-workflows', () => {
       {name: 'ci/bleh'}
     ];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'test_branch',
-            parameters: {
-              run_binaries_tests: true,
-              run_bleh_tests: true,
-              default: true
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'test_branch',
+          parameters: {
+            run_binaries_tests: true,
+            run_bleh_tests: true,
+            default: true
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});
@@ -87,26 +110,26 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with pull_request.labeled (ci/all)', async () => {
-    const payload = require('./fixtures/pull_request.labeled.json');
+    const {payload, endpoint} = await prepare(
+      'pull_request.labeled',
+      'pr-labeled-all'
+    );
     payload['pull_request']['number'] = 1;
     payload['pull_request']['head']['ref'] = 'test_branch';
     payload['pull_request']['labels'] = [{name: 'ci/all'}];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'test_branch',
-            parameters: {
-              run_binaries_tests: true,
-              run_bleh_tests: true,
-              run_foo_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'test_branch',
+          parameters: {
+            run_binaries_tests: true,
+            run_bleh_tests: true,
+            run_foo_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});
@@ -115,7 +138,10 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with pull_request.labeled (fork) (specific labels)', async () => {
-    const payload = require('./fixtures/pull_request.labeled.json');
+    const {payload, endpoint} = await prepare(
+      'pull_request.labeled',
+      'pr-labeled-fork-specific'
+    );
     payload['pull_request']['head']['repo']['fork'] = true;
     payload['pull_request']['number'] = 1;
     payload['pull_request']['head']['ref'] = 'test_branch';
@@ -125,20 +151,17 @@ describe('trigger-circleci-workflows', () => {
       {name: 'ci/bleh'}
     ];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'pull/1/head',
-            parameters: {
-              run_binaries_tests: true,
-              run_bleh_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'pull/1/head',
+          parameters: {
+            run_binaries_tests: true,
+            run_bleh_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});
@@ -147,27 +170,27 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with pull_request.labeled (fork) (ci/all)', async () => {
-    const payload = require('./fixtures/pull_request.labeled.json');
+    const {payload, endpoint} = await prepare(
+      'pull_request.labeled',
+      'pr-labeled-fork-all'
+    );
     payload['pull_request']['head']['repo']['fork'] = true;
     payload['pull_request']['number'] = 1;
     payload['pull_request']['head']['ref'] = 'test_branch';
     payload['pull_request']['labels'] = [{name: 'ci/all'}];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'pull/1/head',
-            parameters: {
-              run_binaries_tests: true,
-              run_bleh_tests: true,
-              run_foo_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'pull/1/head',
+          parameters: {
+            run_binaries_tests: true,
+            run_bleh_tests: true,
+            run_foo_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});
@@ -176,22 +199,19 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with push (refs/heads/nightly)', async () => {
-    const payload = require('./fixtures/push.json');
+    const {payload, endpoint} = await prepare('push', 'push-nightly');
     payload['ref'] = 'refs/heads/nightly';
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'nightly',
-            parameters: {
-              run_binaries_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'nightly',
+          parameters: {
+            run_binaries_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'push', payload, id: '2'});
@@ -200,22 +220,19 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with push (refs/heads/ci-all/bleh)', async () => {
-    const payload = require('./fixtures/push.json');
+    const {payload, endpoint} = await prepare('push', 'push-all-bleh');
     payload['ref'] = 'refs/heads/ci-all/bleh';
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            branch: 'ci-all/bleh',
-            parameters: {
-              run_binaries_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          branch: 'ci-all/bleh',
+          parameters: {
+            run_binaries_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'push', payload, id: '2'});
@@ -224,22 +241,19 @@ describe('trigger-circleci-workflows', () => {
   });
 
   test('test with push (/refs/tags/v1.5.0-rc1)', async () => {
-    const payload = require('./fixtures/push.json');
+    const {payload, endpoint} = await prepare('push', 'push-tag-rc');
     payload['ref'] = 'refs/tags/v1.5.0-rc1';
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(
-        triggerCircleBot.circlePipelineEndpoint(EXAMPLE_REPO_KEY),
-        (body: any) => {
-          expect(body).toStrictEqual({
-            tag: 'v1.5.0-rc1',
-            parameters: {
-              run_binaries_tests: true,
-              default: false
-            }
-          });
-          return true;
-        }
-      )
+      .post(endpoint, (body: any) => {
+        expect(body).toStrictEqual({
+          tag: 'v1.5.0-rc1',
+          parameters: {
+            run_binaries_tests: true,
+            default: false
+          }
+        });
+        return true;
+      })
       .reply(201);
 
     await probot.receive({name: 'push', payload, id: '2'});
