@@ -2,8 +2,12 @@ import axios from 'axios';
 import * as probot from 'probot';
 import * as utils from './utils';
 
+interface Params {
+  [param: string]: boolean;
+}
+
 interface LabelParams {
-  parameter: string;
+  parameter?: string;
   default_true_on?: {
     branches?: string[];
     tags?: string[];
@@ -12,6 +16,7 @@ interface LabelParams {
 }
 
 interface Config {
+  default_params?: Params;
   labels_to_circle_params: {
     [label: string]: LabelParams;
   };
@@ -102,14 +107,19 @@ export function genCircleParametersForPR(
   config: Config,
   context: probot.Context,
   appliedLabels: string[]
-): object {
+): Params {
   context.log.debug({config, appliedLabels}, 'genParametersForPR');
-  const parameters = {};
-  const labelsToParams = config.labels_to_circle_params;
+  const {
+    default_params: parameters = {},
+    labels_to_circle_params: labelsToParams
+  } = config;
   for (const label of Object.keys(labelsToParams)) {
     // ci/all is a special label that will set all to true
     if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
-      parameters[labelsToParams[label].parameter] = true;
+      const {parameter} = labelsToParams[label];
+      if (parameter !== undefined) {
+        parameters[parameter] = true;
+      }
       if (labelsToParams[label].set_to_false) {
         const falseParams = labelsToParams[label].set_to_false;
         // There's potential for labels to override each other which we should
@@ -126,9 +136,11 @@ export function genCircleParametersForPR(
 function genCircleParametersForPush(
   config: Config,
   context: probot.Context
-): object {
-  const parameters = {};
-  const labelsToParams = config.labels_to_circle_params;
+): Params {
+  const {
+    default_params: parameters = {},
+    labels_to_circle_params: labelsToParams
+  } = config;
   const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
   const strippedRef: string = stripReference(context.payload['ref']);
   for (const label of Object.keys(labelsToParams)) {
@@ -146,7 +158,10 @@ function genCircleParametersForPush(
     for (const pattern of defaultTrueOn[refsToMatch]) {
       context.log.debug({pattern}, 'genParametersForPush');
       if (strippedRef.match(pattern)) {
-        parameters[labelsToParams[label].parameter] = true;
+        const {parameter} = labelsToParams[label];
+        if (parameter !== undefined) {
+          parameters[parameter] = true;
+        }
         if (labelsToParams[label].set_to_false) {
           const falseParams = labelsToParams[label].set_to_false;
           // There's potential for labels to override each other which we should

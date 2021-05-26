@@ -7,9 +7,18 @@ import * as triggerCircleBot from '../src/trigger-circleci-workflows';
 nock.disableNetConnect();
 
 const EXAMPLE_CONFIG = `
+default_params:
+  default: true
 labels_to_circle_params:
   ci/binaries:
     parameter: run_binaries_tests
+    default_true_on:
+      branches:
+        - nightly
+        - ci-all/.*
+      tags:
+        - v[0-9]+(\.[0-9]+)*-rc[0-9]+
+  ci/no-default:
     default_true_on:
       branches:
         - nightly
@@ -64,7 +73,7 @@ describe('trigger-circleci-workflows', () => {
             parameters: {
               run_binaries_tests: true,
               run_bleh_tests: true,
-              default: false
+              default: true
             }
           });
           return true;
@@ -112,6 +121,7 @@ describe('trigger-circleci-workflows', () => {
     payload['pull_request']['head']['ref'] = 'test_branch';
     payload['pull_request']['labels'] = [
       {name: 'ci/binaries'},
+      {name: 'ci/no-default'},
       {name: 'ci/bleh'}
     ];
     const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
