@@ -2,17 +2,37 @@ import axios from 'axios';
 import * as probot from 'probot';
 import * as utils from './utils';
 
+interface Params {
+  [param: string]: boolean;
+}
+
+interface LabelParams {
+  parameter?: string;
+  default_true_on?: {
+    branches?: string[];
+    tags?: string[];
+  };
+  set_to_false?: boolean;
+}
+
+interface Config {
+  default_params?: Params;
+  labels_to_circle_params: {
+    [label: string]: LabelParams;
+  };
+}
+
 export const configName = 'pytorch-circleci-labels.yml';
 export const circleAPIUrl = 'https://circleci.com';
 const circleToken = process.env.CIRCLE_TOKEN;
-const repoMap = new Map<string, object>();
+const repoMap = new Map<string, Config | {}>();
 
-async function loadConfig(context: probot.Context): Promise<object> {
+async function loadConfig(context: probot.Context): Promise<Config | {}> {
   const repoKey = utils.repoKey(context);
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
     context.log.debug(`Grabbing config for ${repoKey}`, 'loadConfig');
-    configObj = await context.config(configName);
+    configObj = (await context.config(configName)) as Config | {};
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
     }
@@ -22,7 +42,10 @@ async function loadConfig(context: probot.Context): Promise<object> {
   return repoMap.get(repoKey);
 }
 
-function isValidConfig(context: probot.Context, config: object): boolean {
+function isValidConfig(
+  context: probot.Context,
+  config: Config | {}
+): config is Config {
   if (Object.keys(config).length === 0 || !config['labels_to_circle_params']) {
     context.log.debug(
       `No valid configuration found for repository ${utils.repoKey(context)}`
@@ -81,19 +104,24 @@ export function circlePipelineEndpoint(repoKey: string): string {
 }
 
 export function genCircleParametersForPR(
-  config: object,
+  config: Config,
   context: probot.Context,
   appliedLabels: string[]
-): object {
+): Params {
   context.log.debug({config, appliedLabels}, 'genParametersForPR');
-  const parameters = {};
-  const labelsToParams = config['labels_to_circle_params'];
+  const {
+    default_params: parameters = {},
+    labels_to_circle_params: labelsToParams
+  } = config;
   for (const label of Object.keys(labelsToParams)) {
     // ci/all is a special label that will set all to true
     if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
-      parameters[labelsToParams[label].parameter] = true;
-      if (labelsToParams[label]['set_to_false']) {
-        const falseParams = labelsToParams[label]['set_to_false'];
+      const {parameter} = labelsToParams[label];
+      if (parameter !== undefined) {
+        parameters[parameter] = true;
+      }
+      if (labelsToParams[label].set_to_false) {
+        const falseParams = labelsToParams[label].set_to_false;
         // There's potential for labels to override each other which we should
         // probably be careful of
         for (const falseLabel of Object.keys(falseParams)) {
@@ -106,31 +134,36 @@ export function genCircleParametersForPR(
 }
 
 function genCircleParametersForPush(
-  config: object,
+  config: Config,
   context: probot.Context
-): object {
-  const parameters = {};
-  const labelsToParams = config['labels_to_circle_params'];
+): Params {
+  const {
+    default_params: parameters = {},
+    labels_to_circle_params: labelsToParams
+  } = config;
   const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
   const strippedRef: string = stripReference(context.payload['ref']);
   for (const label of Object.keys(labelsToParams)) {
     context.log.debug({label}, 'genParametersForPush');
-    if (!labelsToParams[label]['default_true_on']) {
+    if (!labelsToParams[label].default_true_on) {
       context.log.debug(
         `No default_true_on found for ${label}`,
         'genParametersForPush'
       );
       continue;
     }
-    const defaultTrueOn = labelsToParams[label]['default_true_on'];
+    const defaultTrueOn = labelsToParams[label].default_true_on;
     const refsToMatch = onTag ? 'tags' : 'branches';
     context.log.debug({defaultTrueOn, refsToMatch, strippedRef});
     for (const pattern of defaultTrueOn[refsToMatch]) {
       context.log.debug({pattern}, 'genParametersForPush');
       if (strippedRef.match(pattern)) {
-        parameters[labelsToParams[label].parameter] = true;
-        if (labelsToParams[label]['set_to_false']) {
-          const falseParams = labelsToParams[label]['set_to_false'];
+        const {parameter} = labelsToParams[label];
+        if (parameter !== undefined) {
+          parameters[parameter] = true;
+        }
+        if (labelsToParams[label].set_to_false) {
+          const falseParams = labelsToParams[label].set_to_false;
           // There's potential for labels to override each other which we should
           // probably be careful of
           for (const falseLabel of Object.keys(falseParams)) {
