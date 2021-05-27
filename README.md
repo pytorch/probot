@@ -92,7 +92,7 @@ side-by-side.
 
 ```sh
 scripts/build-prod
-s3cmd put artifacts/pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
+aws s3 cp artifacts/pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
 ```
 
 Then "Upload a file from Amazon S3" from the web UI at https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/pytorch-probot?tab=graph (using the above s3 url)
