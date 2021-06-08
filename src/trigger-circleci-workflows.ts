@@ -31,7 +31,7 @@ async function loadConfig(context: probot.Context): Promise<Config | {}> {
   const repoKey = utils.repoKey(context);
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
-    context.log.info(`Grabbing config for ${repoKey}`, 'loadConfig');
+    context.log.info({repoKey}, 'loadConfig');
     configObj = (await context.config(configName)) as Config | {};
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
@@ -147,8 +147,8 @@ function genCircleParametersForPush(
     context.log.info({label}, 'genParametersForPush');
     if (!labelsToParams[label].default_true_on) {
       context.log.info(
-        `No default_true_on found for ${label}`,
-        'genParametersForPush'
+        {label},
+        'genParametersForPush (no default_true_on found)'
       );
       continue;
     }
@@ -200,7 +200,7 @@ async function runBotForPR(context: probot.Context): Promise<void> {
       );
     }
   } catch (err) {
-    context.log.error(err, 'runBotForPR');
+    context.log.error({err}, 'runBotForPR');
   }
 }
 
@@ -222,7 +222,7 @@ async function runBotForPush(context: probot.Context): Promise<void> {
       });
     }
   } catch (err) {
-    context.log.error(err, 'runBotForPush');
+    context.log.error({err}, 'runBotForPush');
   }
 }
 
