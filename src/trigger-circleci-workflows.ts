@@ -31,12 +31,12 @@ async function loadConfig(context: probot.Context): Promise<Config | {}> {
   const repoKey = utils.repoKey(context);
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
-    context.log.debug(`Grabbing config for ${repoKey}`, 'loadConfig');
+    context.log.info({repoKey}, 'loadConfig');
     configObj = (await context.config(configName)) as Config | {};
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
     }
-    context.log.debug({configObj}, 'loadConfig');
+    context.log.info({configObj}, 'loadConfig');
     repoMap.set(repoKey, configObj);
   }
   return repoMap.get(repoKey);
@@ -47,7 +47,7 @@ function isValidConfig(
   config: Config | {}
 ): config is Config {
   if (Object.keys(config).length === 0 || !config['labels_to_circle_params']) {
-    context.log.debug(
+    context.log.info(
       `No valid configuration found for repository ${utils.repoKey(context)}`
     );
     return false;
@@ -67,7 +67,7 @@ async function getAppliedLabels(context: probot.Context): Promise<string[]> {
       appliedLabels.push(label['name']);
     }
   }
-  context.log.debug({appliedLabels}, 'getAppliedLabels');
+  context.log.info({appliedLabels}, 'getAppliedLabels');
   return appliedLabels;
 }
 
@@ -76,7 +76,7 @@ async function triggerCircleCI(
   data: object
 ): Promise<void> {
   const repoKey = utils.repoKey(context);
-  context.log.debug({repoKey, data}, 'triggerCircleCI');
+  context.log.info({repoKey, data}, 'triggerCircleCI');
   await axios
     .post(`${circleAPIUrl}${circlePipelineEndpoint(repoKey)}`, data, {
       validateStatus: () => {
@@ -108,7 +108,7 @@ export function genCircleParametersForPR(
   context: probot.Context,
   appliedLabels: string[]
 ): Params {
-  context.log.debug({config, appliedLabels}, 'genParametersForPR');
+  context.log.info({config, appliedLabels}, 'genParametersForPR');
   const {
     default_params: parameters = {},
     labels_to_circle_params: labelsToParams
@@ -144,19 +144,19 @@ function genCircleParametersForPush(
   const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
   const strippedRef: string = stripReference(context.payload['ref']);
   for (const label of Object.keys(labelsToParams)) {
-    context.log.debug({label}, 'genParametersForPush');
+    context.log.info({label}, 'genParametersForPush');
     if (!labelsToParams[label].default_true_on) {
-      context.log.debug(
-        `No default_true_on found for ${label}`,
-        'genParametersForPush'
+      context.log.info(
+        {label},
+        'genParametersForPush (no default_true_on found)'
       );
       continue;
     }
     const defaultTrueOn = labelsToParams[label].default_true_on;
     const refsToMatch = onTag ? 'tags' : 'branches';
-    context.log.debug({defaultTrueOn, refsToMatch, strippedRef});
+    context.log.info({defaultTrueOn, refsToMatch, strippedRef});
     for (const pattern of defaultTrueOn[refsToMatch]) {
-      context.log.debug({pattern}, 'genParametersForPush');
+      context.log.info({pattern}, 'genParametersForPush');
       if (strippedRef.match(pattern)) {
         const {parameter} = labelsToParams[label];
         if (parameter !== undefined) {
@@ -188,7 +188,7 @@ async function runBotForPR(context: probot.Context): Promise<void> {
     }
     const labels = await getAppliedLabels(context);
     const parameters = genCircleParametersForPR(config, context, labels);
-    context.log.debug({config, labels, parameters}, 'runBot');
+    context.log.info({config, labels, parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
       await triggerCircleCI(context, {
         branch: triggerBranch,
@@ -200,13 +200,13 @@ async function runBotForPR(context: probot.Context): Promise<void> {
       );
     }
   } catch (err) {
-    context.log.error(err, 'runBotForPR');
+    context.log.error({err}, 'runBotForPR');
   }
 }
 
 async function runBotForPush(context: probot.Context): Promise<void> {
   try {
-    context.log.debug('Recieved push!');
+    context.log.info('Recieved push!');
     const config = await loadConfig(context);
     if (!isValidConfig(context, config)) {
       return;
@@ -214,7 +214,7 @@ async function runBotForPush(context: probot.Context): Promise<void> {
     const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
     const parameters = genCircleParametersForPush(config, context);
     const refKey: string = onTag ? 'tag' : 'branch';
-    context.log.debug({parameters}, 'runBot');
+    context.log.info({parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
       await triggerCircleCI(context, {
         [refKey]: stripReference(context.payload['ref']),
@@ -222,7 +222,7 @@ async function runBotForPush(context: probot.Context): Promise<void> {
       });
     }
   } catch (err) {
-    context.log.error(err, 'runBotForPush');
+    context.log.error({err}, 'runBotForPush');
   }
 }
 
