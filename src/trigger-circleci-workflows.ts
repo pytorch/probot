@@ -207,6 +207,11 @@ async function runBotForPR(context: probot.Context): Promise<void> {
 async function runBotForPush(context: probot.Context): Promise<void> {
   try {
     context.log.info('Recieved push!');
+    const ref = stripReference(context.payload['ref']);
+    if (ref.startsWith('gh/')) {
+      context.log.info('Ignoring ghstack branch');
+      return;
+    }
     const config = await loadConfig(context);
     if (!isValidConfig(context, config)) {
       return;
@@ -217,7 +222,7 @@ async function runBotForPush(context: probot.Context): Promise<void> {
     context.log.info({parameters}, 'runBot');
     if (Object.keys(parameters).length !== 0) {
       await triggerCircleCI(context, {
-        [refKey]: stripReference(context.payload['ref']),
+        [refKey]: ref,
         parameters
       });
     }
