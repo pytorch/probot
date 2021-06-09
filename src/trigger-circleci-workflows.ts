@@ -113,11 +113,16 @@ export function genCircleParametersForPR(
     default_params: parameters = {},
     labels_to_circle_params: labelsToParams
   } = config;
+  context.log.info({parameters}, 'genCircleParametersForPR (default_params)');
   for (const label of Object.keys(labelsToParams)) {
     // ci/all is a special label that will set all to true
     if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
       const {parameter} = labelsToParams[label];
       if (parameter !== undefined) {
+        context.log.info(
+          {parameter},
+          'genCircleParametersForPR setting parameter to true'
+        );
         parameters[parameter] = true;
       }
       if (labelsToParams[label].set_to_false) {
@@ -125,7 +130,12 @@ export function genCircleParametersForPR(
         // There's potential for labels to override each other which we should
         // probably be careful of
         for (const falseLabel of Object.keys(falseParams)) {
-          parameters[falseParams[falseLabel]] = false;
+          const param = falseParams[falseLabel];
+          context.log.info(
+            {param},
+            'genCircleParametersForPR (set_to_false) setting param to false'
+          );
+          parameters[param] = false;
         }
       }
     }
@@ -141,6 +151,7 @@ function genCircleParametersForPush(
     default_params: parameters = {},
     labels_to_circle_params: labelsToParams
   } = config;
+  context.log.info({parameters}, 'genCircleParametersForPush (default_params)');
   const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
   const strippedRef: string = stripReference(context.payload['ref']);
   for (const label of Object.keys(labelsToParams)) {
@@ -160,6 +171,10 @@ function genCircleParametersForPush(
       if (strippedRef.match(pattern)) {
         const {parameter} = labelsToParams[label];
         if (parameter !== undefined) {
+          context.log.info(
+            {parameter},
+            'genParametersForPush setting parameter to true'
+          );
           parameters[parameter] = true;
         }
         if (labelsToParams[label].set_to_false) {
@@ -167,7 +182,12 @@ function genCircleParametersForPush(
           // There's potential for labels to override each other which we should
           // probably be careful of
           for (const falseLabel of Object.keys(falseParams)) {
-            parameters[falseParams[falseLabel]] = false;
+            const param = falseParams[falseLabel];
+            context.log.info(
+              {param},
+              'genParametersForPush (set_to_false) setting param to false'
+            );
+            parameters[param] = false;
           }
         }
       }
@@ -182,6 +202,7 @@ async function runBotForPR(context: probot.Context): Promise<void> {
     if (context.payload['pull_request']['head']['repo']['fork']) {
       triggerBranch = `pull/${context.payload['pull_request']['number']}/head`;
     }
+    context.log.info({triggerBranch}, 'runBotForPR');
     const config = await loadConfig(context);
     if (!isValidConfig(context, config)) {
       return;
@@ -206,8 +227,10 @@ async function runBotForPR(context: probot.Context): Promise<void> {
 
 async function runBotForPush(context: probot.Context): Promise<void> {
   try {
-    context.log.info('Recieved push!');
-    const ref = stripReference(context.payload['ref']);
+    const rawRef = context.payload['ref'];
+    const onTag: boolean = rawRef.startsWith('refs/tags');
+    const ref = stripReference(rawRef);
+    context.log.info({rawRef, onTag, ref}, 'runBotForPush');
     if (ref.startsWith('gh/')) {
       context.log.info('Ignoring ghstack branch');
       return;
@@ -216,7 +239,6 @@ async function runBotForPush(context: probot.Context): Promise<void> {
     if (!isValidConfig(context, config)) {
       return;
     }
-    const onTag: boolean = context.payload['ref'].startsWith('refs/tags');
     const parameters = genCircleParametersForPush(config, context);
     const refKey: string = onTag ? 'tag' : 'branch';
     context.log.info({parameters}, 'runBot');
