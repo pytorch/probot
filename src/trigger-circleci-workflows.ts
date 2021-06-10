@@ -11,6 +11,7 @@ interface LabelParams {
   default_true_on?: {
     branches?: string[];
     tags?: string[];
+    pull_request?: null;
   };
   set_to_false?: boolean;
 }
@@ -103,6 +104,10 @@ export function circlePipelineEndpoint(repoKey: string): string {
   return `/api/v2/project/github/${repoKey}/pipeline`;
 }
 
+function invert(label: string): string {
+  return label.replace(/^ci\//, 'ci/no-');
+}
+
 export function genCircleParametersForPR(
   config: Config,
   context: probot.Context,
@@ -115,8 +120,14 @@ export function genCircleParametersForPR(
   } = config;
   context.log.info({parameters}, 'genCircleParametersForPR (default_params)');
   for (const label of Object.keys(labelsToParams)) {
+    const defaultTrueOn = labelsToParams[label].default_true_on || {};
     // ci/all is a special label that will set all to true
-    if (appliedLabels.includes('ci/all') || appliedLabels.includes(label)) {
+    if (
+      appliedLabels.includes('ci/all') ||
+      appliedLabels.includes(label) ||
+      (defaultTrueOn.pull_request !== undefined &&
+        !appliedLabels.includes(invert(label)))
+    ) {
       const {parameter} = labelsToParams[label];
       if (parameter !== undefined) {
         context.log.info(
@@ -156,17 +167,17 @@ function genCircleParametersForPush(
   const strippedRef: string = stripReference(context.payload['ref']);
   for (const label of Object.keys(labelsToParams)) {
     context.log.info({label}, 'genParametersForPush');
-    if (!labelsToParams[label].default_true_on) {
+    const defaultTrueOn = labelsToParams[label].default_true_on;
+    if (!defaultTrueOn) {
       context.log.info(
         {label},
         'genParametersForPush (no default_true_on found)'
       );
       continue;
     }
-    const defaultTrueOn = labelsToParams[label].default_true_on;
     const refsToMatch = onTag ? 'tags' : 'branches';
     context.log.info({defaultTrueOn, refsToMatch, strippedRef});
-    for (const pattern of defaultTrueOn[refsToMatch]) {
+    for (const pattern of defaultTrueOn[refsToMatch] || []) {
       context.log.info({pattern}, 'genParametersForPush');
       if (strippedRef.match(pattern)) {
         const {parameter} = labelsToParams[label];
@@ -231,10 +242,6 @@ async function runBotForPush(context: probot.Context): Promise<void> {
     const onTag: boolean = rawRef.startsWith('refs/tags');
     const ref = stripReference(rawRef);
     context.log.info({rawRef, onTag, ref}, 'runBotForPush');
-    if (ref.startsWith('gh/')) {
-      context.log.info('Ignoring ghstack branch');
-      return;
-    }
     const config = await loadConfig(context);
     if (!isValidConfig(context, config)) {
       return;
