@@ -31,7 +31,7 @@ describe('custom-ci-info-bot', () => {
     const scope = nock('https://api.github.com')
       .patch('/repos/seemethere/test-repo/pulls/20', (body: any) => {
         expect(body).toMatchObject({
-          body: expect.stringContaining('details')
+          body: expect.stringContaining('<details>')
         });
         return true;
       })
