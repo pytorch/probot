@@ -27,6 +27,12 @@ CC people when labels are added to an issue.
 * If an issue is labeled **topic: flaky-tests**, also label it
   **high priority** and **triage review**
 
+## custom-ci-info-bot
+
+Anytime a PR with `ci/future` is edited, edit its body to contain info about how
+to customize CI on that PR (see the following section). Currently just
+overwrites the entire PR body with a dummy string, so use with caution.
+
 ## trigger-circleci-workflows
 
 * Trigger circleci workflows based off of labeling events / push events
