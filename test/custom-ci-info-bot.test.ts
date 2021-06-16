@@ -1,7 +1,7 @@
 import {promises as fs} from 'fs';
 import nock from 'nock';
 import * as utils from './utils';
-import myProbotApp from '../src/custom-ci-info-bot';
+import {futureLabel, myBot as myProbotApp} from '../src/custom-ci-info-bot';
 
 nock.disableNetConnect();
 
@@ -10,7 +10,6 @@ async function fixture(): Promise<any> {
     await fs.readFile('test/fixtures/pull_request.labeled.json', 'utf8')
   );
   payload.action = 'edited';
-  const futureLabel = 'ci/future';
   const label = payload.pull_request.labels[2];
   label.name = futureLabel;
   label.url = label.url.replace(/ci\/bleh/g, futureLabel);
