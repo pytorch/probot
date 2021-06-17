@@ -104,34 +104,6 @@ describe('trigger-circleci-workflows', () => {
     expect(scope.isDone()).toBe(true);
   });
 
-  test('test with pull_request.labeled (ci/all)', async () => {
-    const {payload, endpoint} = await prepare(
-      'pull_request.labeled',
-      'pr-labeled-all'
-    );
-    payload['pull_request']['number'] = 1;
-    payload['pull_request']['head']['ref'] = 'test_branch';
-    payload['pull_request']['labels'] = [{name: 'ci/all'}];
-    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(endpoint, (body: any) => {
-        expect(body).toStrictEqual({
-          branch: 'test_branch',
-          parameters: {
-            run_binaries_tests: true,
-            run_bleh_tests: true,
-            run_foo_tests: true,
-            default: true
-          }
-        });
-        return true;
-      })
-      .reply(201);
-
-    await probot.receive({name: 'pull_request', payload, id: '2'});
-
-    scope.done();
-  });
-
   test('test with pull_request.labeled (fork) (specific labels)', async () => {
     const {payload, endpoint} = await prepare(
       'pull_request.labeled',
@@ -161,35 +133,6 @@ describe('trigger-circleci-workflows', () => {
     await probot.receive({name: 'pull_request', payload, id: '2'});
 
     expect(scope.isDone()).toBe(true);
-  });
-
-  test('test with pull_request.labeled (fork) (ci/all)', async () => {
-    const {payload, endpoint} = await prepare(
-      'pull_request.labeled',
-      'pr-labeled-fork-all'
-    );
-    payload['pull_request']['head']['repo']['fork'] = true;
-    payload['pull_request']['number'] = 1;
-    payload['pull_request']['head']['ref'] = 'test_branch';
-    payload['pull_request']['labels'] = [{name: 'ci/all'}];
-    const scope = nock(`${triggerCircleBot.circleAPIUrl}`)
-      .post(endpoint, (body: any) => {
-        expect(body).toStrictEqual({
-          branch: 'pull/1/head',
-          parameters: {
-            run_binaries_tests: true,
-            run_bleh_tests: true,
-            run_foo_tests: true,
-            default: true
-          }
-        });
-        return true;
-      })
-      .reply(201);
-
-    await probot.receive({name: 'pull_request', payload, id: '2'});
-
-    scope.done();
   });
 
   test('test with push (refs/heads/nightly)', async () => {
