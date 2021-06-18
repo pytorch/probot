@@ -121,9 +121,7 @@ export function genCircleParametersForPR(
   context.log.info({parameters}, 'genCircleParametersForPR (default_params)');
   for (const label of Object.keys(labelsToParams)) {
     const defaultTrueOn = labelsToParams[label].default_true_on || {};
-    // ci/all is a special label that will set all to true
     if (
-      appliedLabels.includes('ci/all') ||
       appliedLabels.includes(label) ||
       (defaultTrueOn.pull_request !== undefined &&
         !appliedLabels.includes(invert(label)))
