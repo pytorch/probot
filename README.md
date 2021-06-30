@@ -90,12 +90,7 @@ side-by-side.
 
 ## Deploying to AWS
 
-```sh
-scripts/build-prod
-aws s3 cp artifacts/pytorch-probot.zip s3://ossci-assets/pytorch-probot.zip
-```
-
-Then "Upload a file from Amazon S3" from the web UI at https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/pytorch-probot?tab=graph (using the above s3 url)
+[`.github/workflows/build.yml`](.github/workflows/build.yml) will build and deploy the code on every push to `master`.
 
 ## Contributing
 
