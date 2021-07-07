@@ -78,8 +78,10 @@ async function triggerCircleCI(
 ): Promise<void> {
   const repoKey = utils.repoKey(context);
   context.log.info({repoKey, data}, 'triggerCircleCI');
-  await axios
-    .post(`${circleAPIUrl}${circlePipelineEndpoint(repoKey)}`, data, {
+  const resp = await axios.post(
+    `${circleAPIUrl}${circlePipelineEndpoint(repoKey)}`,
+    data,
+    {
       validateStatus: () => {
         return true;
       },
@@ -87,16 +89,16 @@ async function triggerCircleCI(
         username: circleToken,
         password: ''
       }
-    })
-    .then(resp => {
-      if (resp.status !== 201) {
-        throw Error(
-          `Error triggering downstream circleci workflow (${
-            resp.status
-          }): ${JSON.stringify(resp.data)}`
-        );
-      }
-    });
+    }
+  );
+
+  if (resp.status !== 201) {
+    throw Error(
+      `Error triggering downstream circleci workflow (${
+        resp.status
+      }): ${JSON.stringify(resp.data)}`
+    );
+  }
   context.log.info({data}, `Build triggered successfully for ${repoKey}`);
 }
 
