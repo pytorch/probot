@@ -36,4 +36,22 @@ As a courtesy to others, please do not edit the subscriptions of users who are n
       'module: quantization': ['pytorch/quantization']
     });
   });
+  test('malformed subscriptions', () => {
+    expect(
+      parseSubscriptions(`
+This issue is used by [pytorch-probot](https://github.com/pytorch/pytorch-probot) to manage subscriptions to labels.  To subscribe yourself to a label, add a line \`* label @yourusername\`, or add your username to an existing line (space separated) in the body of this issue. **DO NOT COMMENT, COMMENTS ARE NOT RESPECTED BY THE BOT.**
+
+As a courtesy to others, please do not edit the subscriptions of users who are not you.
+
+* high priority @ezyang
+* critical @ezyang
+* module: binaries
+* module: autograd @ezyang
+    `)
+    ).toStrictEqual({
+      critical: ['ezyang'],
+      'high priority': ['ezyang'],
+      'module: autograd': ['ezyang'],
+    });
+  });
 });

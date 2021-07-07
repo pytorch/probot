@@ -8,7 +8,9 @@ export function parseSubscriptions(rawSubsText): object {
     if (labelMatch) {
       const label = labelMatch[1].trim();
       const users = row.match(/@[a-zA-Z0-9-/]+/g);
-      subscriptions[label] = users.map(u => u.substring(1));
+      if (users) {
+        subscriptions[label] = users.map(u => u.substring(1));
+      }
     }
   });
   return subscriptions;
