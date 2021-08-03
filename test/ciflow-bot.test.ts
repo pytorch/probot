@@ -3,8 +3,6 @@ import * as probot from 'probot';
 import * as utils from './utils';
 import {CIFlowBot} from '../src/ciflow-bot';
 
-const nockExpectationTimeout = 5000; // 5 seconds
-
 nock.disableNetConnect();
 
 describe('CIFlowBot Unit Tests', () => {
@@ -82,6 +80,7 @@ describe('CIFlowBot Integration Tests', () => {
   beforeEach(() => {
     p = utils.testProbot();
     p.load(CIFlowBot.main);
+
     nock('https://api.github.com')
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
@@ -118,12 +117,10 @@ describe('CIFlowBot Integration Tests', () => {
 
     await p.receive(event);
 
-    setTimeout(() => {
-      if (!scope.isDone()) {
-        console.error('pending mocks: %j', scope.pendingMocks());
-      }
-      scope.done();
-    }, nockExpectationTimeout);
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
   });
 
   test('add_default_labels strategy not rolled out', async () => {
@@ -134,15 +131,10 @@ describe('CIFlowBot Integration Tests', () => {
 
     const scope = nock('https://api.github.com');
     await p.receive(event);
+
     if (!scope.isDone()) {
       console.error('pending mocks: %j', scope.pendingMocks());
     }
-
-    setTimeout(() => {
-      if (!scope.isDone()) {
-        console.error('pending mocks: %j', scope.pendingMocks());
-      }
-      scope.done();
-    }, nockExpectationTimeout);
+    scope.done();
   });
 });

@@ -77,6 +77,7 @@ export class CIFlowBot {
     this.dispatch_strategies.map(this.dispatch_strategy_func.bind(this));
 
     // Signal the dispatch to GitHub
+    await this.setLabels();
     await this.signal_github();
 
     // Logging of the dispatch
@@ -115,8 +116,6 @@ export class CIFlowBot {
   // thus we pick "assign/unassign" to begin with. See details from the CIFlow RFC:
   // https://github.com/pytorch/pytorch/issues/61888
   async signal_github(): Promise<void> {
-    await this.setLabels();
-
     await this.ctx.github.issues.addAssignees({
       owner: this.owner,
       repo: this.repo,
@@ -210,7 +209,7 @@ export class CIFlowBot {
 
   static main(app: probot.Application): void {
     const webhookHandler = async (ctx: probot.Context): Promise<void> => {
-      new CIFlowBot(ctx).handler();
+      await new CIFlowBot(ctx).handler();
     };
     app.on('pull_request.opened', webhookHandler);
     app.on('pull_request.reopened', webhookHandler);
