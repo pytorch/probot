@@ -1,28 +1,26 @@
 import * as probot from 'probot';
 
-export default function runCIFlowBot(app: probot.Application): void {
-  new CIFlowBot(app).main();
-}
-
 export class CIFlowBot {
   // Constructor required
-  readonly app: probot.Application;
+  readonly ctx: probot.Context;
 
-  // Configurations
-  readonly allowed_command: string[] = ['ciflow'];
-  readonly bot_app_name = 'pytorchbot';
-  readonly bot_assignee = 'pytorchbot';
-  readonly pr_label_prefix = 'ciflow/';
-  readonly rollout_users = ['zhouzhuojie']; // slow rollout to specific group of users first
+  // Static readonly configurations
+  static readonly allowed_commands: string[] = ['ciflow'];
+  static readonly bot_app_name = 'pytorchbot';
+  static readonly bot_assignee = 'pytorchbot';
+  static readonly event_issue_comment = 'issue_comment';
+  static readonly event_pull_request = 'pull_request';
+  static readonly pr_label_prefix = 'ciflow/';
+  static readonly rollout_users = ['zhouzhuojie']; // slow rollout to specific group of users first
+  static readonly strategy_add_default_labels = 'strategy_add_default_labels';
 
   // Stateful instance variables
   command = '';
   command_args: string[] = [];
   comment_author = '';
   comment_body = '';
-  ctx: probot.Context = null;
   dispatch_labels: string[] = [];
-  dispatch_strategies: string[] = ['add_default_labels'];
+  dispatch_strategies = [CIFlowBot.strategy_add_default_labels];
   event = '';
   owner = '';
   pr_author = '';
@@ -30,28 +28,32 @@ export class CIFlowBot {
   pr_number = 0;
   repo = '';
 
-  constructor(app: probot.Application) {
-    this.app = app;
+  constructor(ctx: probot.Context) {
+    this.ctx = ctx;
   }
 
   valid(): boolean {
-    if (this.event !== 'pull_request' && this.event !== 'issue_comment') {
+    if (
+      this.event !== CIFlowBot.event_pull_request &&
+      this.event !== CIFlowBot.event_issue_comment
+    ) {
       this.ctx.log.error({ctx: this.ctx}, 'Unknown webhook event');
       return false;
     }
 
-    if (this.event === 'issue_comment') {
+    if (this.event === CIFlowBot.event_issue_comment) {
       if (this.comment_author === '') {
         this.ctx.log.error({ctx: this.ctx}, 'Empty comment author');
         return false;
       }
 
-      // only the pr author can trigger new changes to the ciflow
+      // TODO: relax the condition to allow any member that has write permissions
+      // for initial rollout, only the pr author can trigger new changes to the ciflow
       if (this.comment_author !== this.pr_author) {
         return false;
       }
 
-      if (!this.allowed_command.includes(this.command)) {
+      if (!CIFlowBot.allowed_commands.includes(this.command)) {
         return false;
       }
     }
@@ -59,7 +61,7 @@ export class CIFlowBot {
   }
 
   rollout(): boolean {
-    if (this.rollout_users.includes(this.pr_author)) {
+    if (CIFlowBot.rollout_users.includes(this.pr_author)) {
       return true;
     }
     return false;
@@ -94,9 +96,8 @@ export class CIFlowBot {
 
   dispatch_strategy_func(strategyName: string): void {
     switch (strategyName) {
-      case 'add_default_labels':
-        // Default dispatch algorithm: 'add_default_labels'
-        // Just make sure the we add a 'ciflow/default' to the existing set of pr_labels
+      case CIFlowBot.strategy_add_default_labels:
+        // strategy_add_default_labels: just make sure the we add a 'ciflow/default' to the existing set of pr_labels
         if (this.dispatch_labels.length === 0) {
           this.dispatch_labels = this.pr_labels;
         }
@@ -120,20 +121,20 @@ export class CIFlowBot {
       owner: this.owner,
       repo: this.repo,
       issue_number: this.pr_number,
-      assignees: [this.bot_assignee]
+      assignees: [CIFlowBot.bot_assignee]
     });
 
     await this.ctx.github.issues.removeAssignees({
       owner: this.owner,
       repo: this.repo,
       issue_number: this.pr_number,
-      assignees: [this.bot_assignee]
+      assignees: [CIFlowBot.bot_assignee]
     });
   }
 
   async setLabels(): Promise<void> {
     const labels = this.dispatch_labels.filter(label =>
-      label.startsWith(this.pr_label_prefix)
+      label.startsWith(CIFlowBot.pr_label_prefix)
     );
     const labelsToDelete = this.pr_labels.filter(l => !labels.includes(l));
     const labelsToAdd = labels.filter(l => !this.pr_labels.includes(l));
@@ -155,7 +156,7 @@ export class CIFlowBot {
   }
 
   parseComment(): void {
-    const re = new RegExp(`^.*@${this.bot_app_name}\\s+(\\w+)\\s?(.*)$`);
+    const re = new RegExp(`^.*@${CIFlowBot.bot_app_name}\\s+(\\w+)\\s?(.*)$`);
     const found = this.comment_body?.match(re);
     if (!found) {
       return;
@@ -169,25 +170,23 @@ export class CIFlowBot {
     }
   }
 
-  parseContext(ctx: probot.Context): void {
-    this.ctx = ctx;
-    this.event = ctx.name;
-    const pr = ctx.payload?.pull_request || ctx.payload?.issue;
+  setContext(): void {
+    this.event = this.ctx.name;
+    const pr = this.ctx.payload?.pull_request || this.ctx.payload?.issue;
     this.pr_number = pr?.number;
     this.pr_author = pr?.user?.login;
     this.pr_labels = pr?.labels
-      ?.filter(label => label.name.startsWith(this.pr_label_prefix))
+      ?.filter(label => label.name.startsWith(CIFlowBot.pr_label_prefix))
       ?.map(label => label.name);
-    this.comment_author = ctx.payload?.comment?.user?.login;
-    this.comment_body = ctx.payload?.comment?.body;
-    this.owner = ctx.payload?.repository?.owner?.login;
-    this.repo = ctx.payload?.repository?.name;
+    this.comment_author = this.ctx.payload?.comment?.user?.login;
+    this.comment_body = this.ctx.payload?.comment?.body;
+    this.owner = this.ctx.payload?.repository?.owner?.login;
+    this.repo = this.ctx.payload?.repository?.name;
     this.parseComment();
-    return;
   }
 
-  async handler(ctx: probot.Context): Promise<void> {
-    this.parseContext(ctx);
+  async handler(): Promise<void> {
+    this.setContext();
     this.ctx.log.info(
       {
         dispatch_labels: this.dispatch_labels,
@@ -207,14 +206,16 @@ export class CIFlowBot {
       return;
     }
     await this.dispatch();
-    return;
   }
 
-  main(): void {
-    this.app.on('pull_request.opened', this.handler.bind(this));
-    this.app.on('pull_request.reopened', this.handler.bind(this));
-    this.app.on('pull_request.synchronize', this.handler.bind(this));
-    this.app.on('issue_comment.created', this.handler.bind(this));
-    this.app.on('issue_comment.edited', this.handler.bind(this));
+  static main(app: probot.Application): void {
+    const webhookHandler = async (ctx: probot.Context): Promise<void> => {
+      new CIFlowBot(ctx).handler();
+    };
+    app.on('pull_request.opened', webhookHandler);
+    app.on('pull_request.reopened', webhookHandler);
+    app.on('pull_request.synchronize', webhookHandler);
+    app.on('issue_comment.created', webhookHandler);
+    app.on('issue_comment.edited', webhookHandler);
   }
 }

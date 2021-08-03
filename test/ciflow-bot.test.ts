@@ -2,22 +2,15 @@ import nock from 'nock';
 import * as probot from 'probot';
 import * as utils from './utils';
 import {CIFlowBot} from '../src/ciflow-bot';
-import runCIFlowBot from '../src/ciflow-bot';
+
+const nockExpectationTimeout = 3000; // 3 seconds
 
 nock.disableNetConnect();
 
 describe('CIFlowBot Unit Tests', () => {
-  let ciflow;
   const pr_number = 5
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
-
-  beforeEach(() => {
-    const p = utils.testProbot();
-    const app = p.load(runCIFlowBot);
-    ciflow = new CIFlowBot(app);
-  })
-
 
   test('parseContext for pull_request.opened', () => {
     const event = require('./fixtures/pull_request.opened.json');
@@ -25,8 +18,8 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
 
-    const ctx = new probot.Context(event, null, null);
-    ciflow.parseContext(ctx)
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    ciflow.setContext()
     expect(ciflow.valid()).toBe(true);
   })
 
@@ -36,8 +29,8 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
 
-    const ctx = new probot.Context(event, null, null);
-    ciflow.parseContext(ctx)
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    ciflow.setContext()
     expect(ciflow.valid()).toBe(true);
   })
 
@@ -46,11 +39,11 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.issue.number = pr_number;
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
-    event.payload.comment.body = `@${ciflow.bot_app_name} ciflow rerun`;
+    event.payload.comment.body = `@${CIFlowBot.bot_assignee} ciflow rerun`;
     event.payload.comment.user.login = event.payload.issue.user.login;
 
-    const ctx = new probot.Context(event, null, null);
-    ciflow.parseContext(ctx)
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    ciflow.setContext()
     expect(ciflow.valid()).toBe(true);
   })
 
@@ -61,8 +54,8 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.name = repo;
     event.payload.comment.body = `invalid comment body`;
 
-    const ctx = new probot.Context(event, null, null);
-    ciflow.parseContext(ctx)
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    ciflow.setContext()
     expect(ciflow.valid()).toBe(false);
   })
 
@@ -71,25 +64,24 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.issue.number = pr_number;
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
-    event.payload.comment.body = `@${ciflow.bot_app_name} ciflow rerun`;
+    event.payload.comment.body = `@${CIFlowBot.bot_assignee} ciflow rerun`;
     event.payload.comment.user.login = 'non-exist-user'
 
-    const ctx = new probot.Context(event, null, null);
-    ciflow.parseContext(ctx)
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    ciflow.setContext()
     expect(ciflow.valid()).toBe(false);
   })
 })
 
 describe('CIFlowBot Integration Tests', () => {
   let p: probot.Probot;
-  let app;
   const pr_number = 5
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
 
   beforeEach(() => {
     p = utils.testProbot();
-    app = p.load(runCIFlowBot);
+    p.load(CIFlowBot.main);
     nock('https://api.github.com')
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
@@ -99,8 +91,7 @@ describe('CIFlowBot Integration Tests', () => {
     jest.restoreAllMocks();
   });
 
-  test('add_default_labels strategy happy path', async () => {
-    const ciflow = new CIFlowBot(app);
+  test('add_default_labels strategy happy path for pull_request.opened event', async () => {
     jest.spyOn(CIFlowBot.prototype, 'rollout').mockReturnValue(true);
 
     const event = require('./fixtures/pull_request.opened.json');
@@ -115,25 +106,27 @@ describe('CIFlowBot Integration Tests', () => {
       })
       .reply(200)
       .post(`/repos/${owner}/${repo}/issues/${pr_number}/assignees`, body => {
-        expect(body).toMatchObject({assignees: [ciflow.bot_assignee]});
+        expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
         return true;
       })
       .reply(200)
       .delete(`/repos/${owner}/${repo}/issues/${pr_number}/assignees`, body => {
-        expect(body).toMatchObject({assignees: [ciflow.bot_assignee]});
+        expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
         return true;
       })
       .reply(200);
 
     await p.receive(event);
-    if (!scope.isDone()) {
-      console.error('pending mocks: %j', scope.pendingMocks());
-    }
-    scope.done();
+
+    setTimeout(() => {
+      if (!scope.isDone()) {
+        console.error('pending mocks: %j', scope.pendingMocks());
+      }
+      scope.done()
+    }, nockExpectationTimeout)
   });
 
   test('add_default_labels strategy not rolled out', async () => {
-    const ciflow = new CIFlowBot(app);
     const event = require('./fixtures/pull_request.opened.json');
     event.payload.pull_request.number = pr_number;
     event.payload.repository.owner.login = owner;
@@ -144,6 +137,12 @@ describe('CIFlowBot Integration Tests', () => {
     if (!scope.isDone()) {
       console.error('pending mocks: %j', scope.pendingMocks());
     }
-    scope.done();
+
+    setTimeout(() => {
+      if (!scope.isDone()) {
+        console.error('pending mocks: %j', scope.pendingMocks());
+      }
+      scope.done()
+    }, nockExpectationTimeout)
   });
 });
