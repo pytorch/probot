@@ -66,16 +66,16 @@ export class CIFlowBot {
   }
 
   async dispatch(): Promise<void> {
-    // Default dispatch algorithm: 'add_default_labels'
-    // Just make sure the we add a 'ciflow/default' to the existing set of pr_labels
-    if (this.dispatch_strategies.includes('add_default_labels')) {
-      this.dispatch_labels = ['ciflow/default', ...this.pr_labels];
-    }
+    // Dispatch_strategies is like a pipeline of functions we can apply to
+    // change `this.dispatch_labels`. We can add other dispatch algorithms
+    // based on the ctx or user instructions.
+    // The future algorithms can manupulate the `this.dispatch_labels`, and
+    // individual workflows that can build up `if` conditions on the labels
+    // can be found in `.github/workflows` of pytorch/pytorch repo.
+    this.dispatch_strategies.map(this.dispatch_strategy_func.bind(this));
 
-    // TODO add other dispatch algorithms based on the ctx or user instructions
-
-    // Signal the diapatch
-    await this.signal();
+    // Signal the dispatch to GitHub
+    await this.signal_github();
 
     // Logging of the dispatch
     this.ctx.log.info(
@@ -92,7 +92,28 @@ export class CIFlowBot {
     );
   }
 
-  async signal(): Promise<void> {
+  dispatch_strategy_func(strategyName: string): void {
+    switch (strategyName) {
+      case 'add_default_labels':
+        // Default dispatch algorithm: 'add_default_labels'
+        // Just make sure the we add a 'ciflow/default' to the existing set of pr_labels
+        if (this.dispatch_labels.length === 0) {
+          this.dispatch_labels = this.pr_labels;
+        }
+        this.dispatch_labels = ['ciflow/default', ...this.dispatch_labels];
+        break;
+      default: {
+        this.ctx.log.error({strategyName}, 'Unknown dispatch strategy');
+        break;
+      }
+    }
+  }
+
+  // signal_github sends a signal to GitHub to trigger the dispatch
+  // The logic here is leverage some event that's rarely triggered by other users or bots,
+  // thus we pick "assign/unassign" to begin with. See details from the CIFlow RFC:
+  // https://github.com/pytorch/pytorch/issues/61888
+  async signal_github(): Promise<void> {
     await this.setLabels();
 
     await this.ctx.github.issues.addAssignees({
