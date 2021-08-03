@@ -18,8 +18,8 @@
     "dev": "yarn run build:watch",
     "start": "probot run ./dist/index.js",
     "lint": "eslint src/**/*.ts",
-    "test": "jest",
-    "test:watch": "jest --watch --notify --notifyMode=change --coverage",
+    "test": "jest -i",
+    "test:watch": "jest -i --watch --notify --notifyMode=change --coverage",
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*ts"
   },
