@@ -1,5 +1,8 @@
 import * as probot from 'probot';
 
+// The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
+// For more details about the design, please refer to the RFC: https://github.com/pytorch/pytorch/issues/61888
+// Currently it supports strong validation and slow rollout, and it runs through a pipeline of dispatch strategies.
 export class CIFlowBot {
   // Constructor required
   readonly ctx: probot.Context;
