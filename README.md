@@ -90,7 +90,7 @@ side-by-side.
 
 ## Deploying to AWS
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) will build and deploy the code on every push to `master`.
+[`.github/workflows/build.yml`](.github/workflows/build.yml) will build and deploy the code on every push to `main`.
 
 ## Contributing
 
