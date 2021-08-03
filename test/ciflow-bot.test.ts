@@ -8,7 +8,7 @@ const nockExpectationTimeout = 5000; // 5 seconds
 nock.disableNetConnect();
 
 describe('CIFlowBot Unit Tests', () => {
-  const pr_number = 5
+  const pr_number = 5;
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
 
@@ -19,9 +19,9 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.name = repo;
 
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    ciflow.setContext()
+    ciflow.setContext();
     expect(ciflow.valid()).toBe(true);
-  })
+  });
 
   test('parseContext for pull_request.reopened', () => {
     const event = require('./fixtures/pull_request.reopened.json');
@@ -30,9 +30,9 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.name = repo;
 
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    ciflow.setContext()
+    ciflow.setContext();
     expect(ciflow.valid()).toBe(true);
-  })
+  });
 
   test('parseContext for issue_comment.created with comment author as the pr author', () => {
     const event = require('./fixtures/issue_comment.json');
@@ -43,9 +43,9 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.comment.user.login = event.payload.issue.user.login;
 
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    ciflow.setContext()
+    ciflow.setContext();
     expect(ciflow.valid()).toBe(true);
-  })
+  });
 
   test('parseContext for issue_comment.created with invalid comment', () => {
     const event = require('./fixtures/issue_comment.json');
@@ -55,9 +55,9 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.comment.body = `invalid comment body`;
 
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    ciflow.setContext()
+    ciflow.setContext();
     expect(ciflow.valid()).toBe(false);
-  })
+  });
 
   test('parseContext for issue_comment.created with unknown comment author', () => {
     const event = require('./fixtures/issue_comment.json');
@@ -65,17 +65,17 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
     event.payload.comment.body = `@${CIFlowBot.bot_assignee} ciflow rerun`;
-    event.payload.comment.user.login = 'non-exist-user'
+    event.payload.comment.user.login = 'non-exist-user';
 
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    ciflow.setContext()
+    ciflow.setContext();
     expect(ciflow.valid()).toBe(false);
-  })
-})
+  });
+});
 
 describe('CIFlowBot Integration Tests', () => {
   let p: probot.Probot;
-  const pr_number = 5
+  const pr_number = 5;
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
 
@@ -122,8 +122,8 @@ describe('CIFlowBot Integration Tests', () => {
       if (!scope.isDone()) {
         console.error('pending mocks: %j', scope.pendingMocks());
       }
-      scope.done()
-    }, nockExpectationTimeout)
+      scope.done();
+    }, nockExpectationTimeout);
   });
 
   test('add_default_labels strategy not rolled out', async () => {
@@ -142,7 +142,7 @@ describe('CIFlowBot Integration Tests', () => {
       if (!scope.isDone()) {
         console.error('pending mocks: %j', scope.pendingMocks());
       }
-      scope.done()
-    }, nockExpectationTimeout)
+      scope.done();
+    }, nockExpectationTimeout);
   });
 });
