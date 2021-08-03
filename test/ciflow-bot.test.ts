@@ -3,7 +3,7 @@ import * as probot from 'probot';
 import * as utils from './utils';
 import {CIFlowBot} from '../src/ciflow-bot';
 
-const nockExpectationTimeout = 3000; // 3 seconds
+const nockExpectationTimeout = 5000; // 5 seconds
 
 nock.disableNetConnect();
 
