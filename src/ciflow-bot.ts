@@ -189,6 +189,9 @@ export class CIFlowBot {
 
   async handler(): Promise<void> {
     this.setContext();
+
+    const isValid = this.valid();
+    const isRollout = this.rollout();
     this.ctx.log.info(
       {
         dispatch_labels: this.dispatch_labels,
@@ -197,14 +200,15 @@ export class CIFlowBot {
         owner: this.owner,
         pr_labels: this.pr_labels,
         pr_number: this.pr_number,
+        pr_author: this.pr_author,
+        valid: isValid,
+        rollout: isRollout,
         repo: this.repo
       },
       'ciflow dispatch started!'
     );
-    if (!this.valid()) {
-      return;
-    }
-    if (!this.rollout()) {
+
+    if (!isValid || !isRollout) {
       return;
     }
     await this.dispatch();
