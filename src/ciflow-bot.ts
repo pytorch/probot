@@ -9,7 +9,6 @@ export class CIFlowBot {
 
   // Static readonly configurations
   static readonly allowed_commands: string[] = ['ciflow'];
-  static readonly bot_app_name = 'pytorchbot';
   static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
@@ -162,17 +161,22 @@ export class CIFlowBot {
         name: label
       });
     }
-    await this.ctx.github.issues.addLabels({
-      owner: this.ctx.payload.repository.owner.login,
-      repo: this.ctx.payload.repository.name,
-      issue_number: this.pr_number,
-      labels: labelsToAdd
-    });
+    if (labelsToAdd.length > 0) {
+      await this.ctx.github.issues.addLabels({
+        owner: this.ctx.payload.repository.owner.login,
+        repo: this.ctx.payload.repository.name,
+        issue_number: this.pr_number,
+        labels: labelsToAdd
+      });
+    }
     this.dispatch_labels = labels;
   }
 
   parseComment(): void {
-    const re = new RegExp(`^.*@${CIFlowBot.bot_app_name}\\s+(\\w+)\\s?(.*)$`);
+    const re = new RegExp(
+      `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s?(.*)$`,
+      'm'
+    );
     const found = this.comment_body?.match(re);
     if (!found) {
       return;
@@ -214,16 +218,20 @@ export class CIFlowBot {
     const isRollout = this.rollout();
     this.ctx.log.info(
       {
+        command: this.command,
+        command_args: this.command_args,
+        comment_author: this.comment_author,
+        comment_author_permission: this.comment_author_permission,
         dispatch_labels: this.dispatch_labels,
         dispatch_strategies: this.dispatch_strategies,
         event: this.event,
         owner: this.owner,
+        pr_author: this.pr_author,
         pr_labels: this.pr_labels,
         pr_number: this.pr_number,
-        pr_author: this.pr_author,
-        valid: isValid,
+        repo: this.repo,
         rollout: isRollout,
-        repo: this.repo
+        valid: isValid
       },
       'ciflow dispatch started!'
     );

@@ -43,29 +43,41 @@ describe('CIFlowBot Unit Tests', () => {
     expect(ciflow.valid()).toBe(true);
   });
 
-  test('parseContext for issue_comment.created with comment author as the pr author', async () => {
+  describe('parseContext for issue_comment.created with valid or invalid comments', () => {
     const event = require('./fixtures/issue_comment.json');
     event.payload.issue.number = pr_number;
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
-    event.payload.comment.body = `@${CIFlowBot.bot_assignee} ciflow rerun`;
     event.payload.comment.user.login = event.payload.issue.user.login;
 
-    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    await ciflow.setContext();
-    expect(ciflow.valid()).toBe(true);
-  });
+    const validComments = [
+      `@${CIFlowBot.bot_assignee} ciflow`,
+      `@${CIFlowBot.bot_assignee} ciflow rerun`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun\nNew comments\n`
+    ];
+    test.each(validComments)(
+      `valid comment: %s`,
+      async (validComment: string) => {
+        event.payload.comment.body = validComment;
+        const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+        await ciflow.setContext();
+        expect(ciflow.valid()).toBe(true);
+      }
+    );
 
-  test('parseContext for issue_comment.created with invalid comment', async () => {
-    const event = require('./fixtures/issue_comment.json');
-    event.payload.issue.number = pr_number;
-    event.payload.repository.owner.login = owner;
-    event.payload.repository.name = repo;
-    event.payload.comment.body = `invalid comment body`;
-
-    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
-    await ciflow.setContext();
-    expect(ciflow.valid()).toBe(false);
+    const invalidComments = [
+      `invalid`,
+      `@${CIFlowBot.bot_assignee}` // without commands appended after the @assignee
+    ];
+    test.each(invalidComments)(
+      'invalid comment: %s',
+      async (invalidComment: string) => {
+        event.payload.comment.body = invalidComment;
+        const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+        await ciflow.setContext();
+        expect(ciflow.valid()).toBe(false);
+      }
+    );
   });
 
   test('parseContext for issue_comment.created with comment author that has write permission', async () => {
