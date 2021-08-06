@@ -21,6 +21,7 @@ export class CIFlowBot {
   command = '';
   command_args: string[] = [];
   comment_author = '';
+  comment_author_permission = '';
   comment_body = '';
   dispatch_labels: string[] = [];
   dispatch_strategies = [CIFlowBot.strategy_add_default_labels];
@@ -45,22 +46,35 @@ export class CIFlowBot {
     }
 
     if (this.event === CIFlowBot.event_issue_comment) {
+      if (!CIFlowBot.allowed_commands.includes(this.command)) {
+        return false;
+      }
+
       if (this.comment_author === '') {
         this.ctx.log.error({ctx: this.ctx}, 'Empty comment author');
         return false;
       }
 
-      // TODO: relax the condition to allow any member that has write permissions
-      // for initial rollout, only the pr author can trigger new changes to the ciflow
-      if (this.comment_author !== this.pr_author) {
-        return false;
-      }
-
-      if (!CIFlowBot.allowed_commands.includes(this.command)) {
+      if (
+        this.comment_author !== this.pr_author &&
+        !(
+          this.comment_author_permission === 'admin' ||
+          this.comment_author_permission === 'write'
+        )
+      ) {
         return false;
       }
     }
     return true;
+  }
+
+  async getUserPermission(username: string): Promise<string> {
+    const res = await this.ctx.github.repos.getCollaboratorPermissionLevel({
+      owner: this.owner,
+      repo: this.repo,
+      username
+    });
+    return res?.data?.permission;
   }
 
   rollout(): boolean {
@@ -77,11 +91,11 @@ export class CIFlowBot {
     // The future algorithms can manupulate the `this.dispatch_labels`, and
     // individual workflows that can build up `if` conditions on the labels
     // can be found in `.github/workflows` of pytorch/pytorch repo.
-    this.dispatch_strategies.map(this.dispatch_strategy_func.bind(this));
+    this.dispatch_strategies.map(this.dispatchStrategyFunc.bind(this));
 
     // Signal the dispatch to GitHub
     await this.setLabels();
-    await this.signal_github();
+    await this.signalGithub();
 
     // Logging of the dispatch
     this.ctx.log.info(
@@ -98,7 +112,7 @@ export class CIFlowBot {
     );
   }
 
-  dispatch_strategy_func(strategyName: string): void {
+  dispatchStrategyFunc(strategyName: string): void {
     switch (strategyName) {
       case CIFlowBot.strategy_add_default_labels:
         // strategy_add_default_labels: just make sure the we add a 'ciflow/default' to the existing set of pr_labels
@@ -114,11 +128,11 @@ export class CIFlowBot {
     }
   }
 
-  // signal_github sends a signal to GitHub to trigger the dispatch
+  // signalGithub sends a signal to GitHub to trigger the dispatch
   // The logic here is leverage some event that's rarely triggered by other users or bots,
   // thus we pick "assign/unassign" to begin with. See details from the CIFlow RFC:
   // https://github.com/pytorch/pytorch/issues/61888
-  async signal_github(): Promise<void> {
+  async signalGithub(): Promise<void> {
     await this.ctx.github.issues.addAssignees({
       owner: this.owner,
       repo: this.repo,
@@ -172,7 +186,7 @@ export class CIFlowBot {
     }
   }
 
-  setContext(): void {
+  async setContext(): Promise<void> {
     this.event = this.ctx.name;
     const pr = this.ctx.payload?.pull_request || this.ctx.payload?.issue;
     this.pr_number = pr?.number;
@@ -180,15 +194,21 @@ export class CIFlowBot {
     this.pr_labels = pr?.labels
       ?.filter(label => label.name.startsWith(CIFlowBot.pr_label_prefix))
       ?.map(label => label.name);
-    this.comment_author = this.ctx.payload?.comment?.user?.login;
-    this.comment_body = this.ctx.payload?.comment?.body;
     this.owner = this.ctx.payload?.repository?.owner?.login;
     this.repo = this.ctx.payload?.repository?.name;
-    this.parseComment();
+
+    if (this.event === CIFlowBot.event_issue_comment) {
+      this.comment_author = this.ctx.payload?.comment?.user?.login;
+      this.comment_body = this.ctx.payload?.comment?.body;
+      this.parseComment();
+
+      const permission = await this.getUserPermission(this.comment_author);
+      this.comment_author_permission = permission;
+    }
   }
 
   async handler(): Promise<void> {
-    this.setContext();
+    await this.setContext();
 
     const isValid = this.valid();
     const isRollout = this.rollout();
