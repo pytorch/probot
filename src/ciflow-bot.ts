@@ -44,6 +44,7 @@ export class CIFlowBot {
       return false;
     }
 
+    // validate the issue_comment event
     if (this.event === CIFlowBot.event_issue_comment) {
       if (!CIFlowBot.allowed_commands.includes(this.command)) {
         return false;
@@ -64,6 +65,8 @@ export class CIFlowBot {
         return false;
       }
     }
+
+    // validate the pull_request event, so far we just return true
     return true;
   }
 
@@ -161,6 +164,8 @@ export class CIFlowBot {
         name: label
       });
     }
+
+    // skip addLabels if there's no label to add
     if (labelsToAdd.length > 0) {
       await this.ctx.github.issues.addLabels({
         owner: this.ctx.payload.repository.owner.login,
@@ -173,10 +178,12 @@ export class CIFlowBot {
   }
 
   parseComment(): void {
+    // considering the `m` multi-line comment match
     const re = new RegExp(
       `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s?(.*)$`,
       'm'
     );
+
     const found = this.comment_body?.match(re);
     if (!found) {
       return;
