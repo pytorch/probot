@@ -52,6 +52,18 @@ describe('CIFlowBot Unit Tests', () => {
 
     const validComments = [
       `@${CIFlowBot.bot_assignee} ciflow rerun`,
+      `   @${CIFlowBot.bot_assignee} ciflow rerun`,
+      `   @${CIFlowBot.bot_assignee}     ciflow rerun`,
+      `   @${CIFlowBot.bot_assignee}     ciflow   rerun`,
+      `   @${CIFlowBot.bot_assignee}     ciflow   rerun    `,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun`,
+      `Some other comments, \n   @${CIFlowBot.bot_assignee} ciflow rerun`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee}    ciflow rerun`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow    rerun`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun -l ciflow/slow`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun -l ciflow/slow -l ciflow/scheduled`,
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun -l     ciflow/slow`, // with spaces
+      `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun -l     ciflow/slow -l ciflow/scheduled`,
       `Some other comments, \n@${CIFlowBot.bot_assignee} ciflow rerun\nNew comments\n`
     ];
     test.each(validComments)(
@@ -66,8 +78,8 @@ describe('CIFlowBot Unit Tests', () => {
 
     const invalidComments = [
       `invalid`,
-      `@${CIFlowBot.bot_assignee}`,          // without commands appended after the @assignee
-      `@${CIFlowBot.bot_assignee} ciflow`,   // without subcommand rerun
+      `@${CIFlowBot.bot_assignee}`, // without commands appended after the @assignee
+      `@${CIFlowBot.bot_assignee} ciflow` // without subcommand rerun
     ];
     test.each(invalidComments)(
       'invalid comment: %s',
@@ -188,14 +200,8 @@ describe('CIFlowBot Integration Tests', () => {
     event.payload.comment.id = comment_id;
 
     test.each([
-      [
-        `@${CIFlowBot.bot_assignee} ciflow rerun`,
-        ['ciflow/default']
-      ],
-      [
-        `@${CIFlowBot.bot_assignee} ciflow rerun -l`,
-        ['ciflow/default']
-      ],
+      [`@${CIFlowBot.bot_assignee} ciflow rerun`, ['ciflow/default']],
+      [`@${CIFlowBot.bot_assignee} ciflow rerun -l`, ['ciflow/default']],
       [
         `@${CIFlowBot.bot_assignee} ciflow rerun -l ciflow/scheduled`,
         ['ciflow/default', 'ciflow/scheduled']
@@ -207,27 +213,37 @@ describe('CIFlowBot Integration Tests', () => {
     ])(
       `valid comment: %s, expected labels: %j`,
       async (validComment: string, expectedLabels: string[]) => {
-        event.payload.comment.body = validComment
+        event.payload.comment.body = validComment;
         for (const permission of ['write', 'admin']) {
           const scope = nock('https://api.github.com')
             .get(
               `/repos/${owner}/${repo}/collaborators/${event.payload.comment.user.login}/permission`
             )
             .reply(200, {permission: `${permission}`})
-            .post(`/repos/${owner}/${repo}/issues/${pr_number}/labels`, body => {
-              expect(body).toMatchObject(expectedLabels);
-              return true;
-            })
+            .post(
+              `/repos/${owner}/${repo}/issues/${pr_number}/labels`,
+              body => {
+                expect(body).toMatchObject(expectedLabels);
+                return true;
+              }
+            )
             .reply(200)
-            .post(`/repos/${owner}/${repo}/issues/${pr_number}/assignees`, body => {
-              expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
-              return true;
-            })
+            .post(
+              `/repos/${owner}/${repo}/issues/${pr_number}/assignees`,
+              body => {
+                expect(body).toMatchObject({
+                  assignees: [CIFlowBot.bot_assignee]
+                });
+                return true;
+              }
+            )
             .reply(200)
             .delete(
               `/repos/${owner}/${repo}/issues/${pr_number}/assignees`,
               body => {
-                expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
+                expect(body).toMatchObject({
+                  assignees: [CIFlowBot.bot_assignee]
+                });
                 return true;
               }
             )
@@ -248,7 +264,8 @@ describe('CIFlowBot Integration Tests', () => {
           }
           scope.done();
         }
-      });
+      }
+    );
   });
 
   describe('issue_comment.created event: add_default_labels strategy with invalid parseComments', () => {
@@ -262,20 +279,18 @@ describe('CIFlowBot Integration Tests', () => {
       `invalid`,
       `@${CIFlowBot.bot_assignee} invalid`,
       `@${CIFlowBot.bot_assignee} ciflow invalid`
-    ])(
-      `invalid comment: %s`,
-      async (invalidComment: string) => {
-        event.payload.comment.body = invalidComment
+    ])(`invalid comment: %s`, async (invalidComment: string) => {
+      event.payload.comment.body = invalidComment;
 
-        // we shouldn't hit the github API, thus a catch-all scope and asserting no api calls
-        const scope = nock('https://api.github.com')
+      // we shouldn't hit the github API, thus a catch-all scope and asserting no api calls
+      const scope = nock('https://api.github.com');
 
-        await p.receive(event);
-        if (!scope.isDone()) {
-          console.error('pending mocks: %j', scope.pendingMocks());
-        }
-        scope.done();
-      });
+      await p.receive(event);
+      if (!scope.isDone()) {
+        console.error('pending mocks: %j', scope.pendingMocks());
+      }
+      scope.done();
+    });
   });
 
   test('issue_comment.created event: add_default_labels strategy not not enough permission', async () => {

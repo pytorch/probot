@@ -214,7 +214,7 @@ export class CIFlowBot {
   parseComment(): boolean {
     // considering the `m` multi-line comment match
     const re = new RegExp(
-      `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s?(.*)$`,
+      `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s+(.*)$`,
       'm'
     );
 
@@ -227,7 +227,7 @@ export class CIFlowBot {
       this.command = found[1];
     }
     if (found.length === 3) {
-      this.command_args = minimist(found[2].split(' '));
+      this.command_args = minimist(found[2].split(/\s+/));
     }
 
     return this.parseCommandArgs();
