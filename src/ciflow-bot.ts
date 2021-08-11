@@ -23,6 +23,7 @@ export class CIFlowBot {
   // Stateful instance variables
   command = '';
   command_args: minimist.ParsedArgs;
+  comment_id = 0;
   comment_author = '';
   comment_author_permission = '';
   comment_body = '';
@@ -147,6 +148,15 @@ export class CIFlowBot {
       issue_number: this.pr_number,
       assignees: [CIFlowBot.bot_assignee]
     });
+
+    if (this.event === CIFlowBot.event_issue_comment) {
+      await this.ctx.github.reactions.createForIssueComment({
+        comment_id: this.comment_id,
+        content: '+1',
+        owner: this.owner,
+        repo: this.repo
+      });
+    }
   }
 
   async setLabels(): Promise<void> {
@@ -237,6 +247,7 @@ export class CIFlowBot {
     if (this.event === CIFlowBot.event_issue_comment) {
       this.comment_author = this.ctx.payload?.comment?.user?.login;
       this.comment_body = this.ctx.payload?.comment?.body;
+      this.comment_id = this.ctx.payload?.comment?.id;
 
       // if parseComment returns false, we don't need to do anything
       if (!this.parseComment()) {

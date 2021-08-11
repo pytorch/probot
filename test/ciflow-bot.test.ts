@@ -126,6 +126,7 @@ describe('CIFlowBot Integration Tests', () => {
   const pr_number = 5;
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
+  const comment_id = 10;
 
   beforeEach(() => {
     p = utils.testProbot();
@@ -196,6 +197,7 @@ describe('CIFlowBot Integration Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
     event.payload.comment.user.login = 'non-exist-user';
+    event.payload.comment.id = comment_id;
 
     test.each([
       [`@${CIFlowBot.bot_assignee} ciflow rerun`, ['ciflow/default']],
@@ -242,6 +244,14 @@ describe('CIFlowBot Integration Tests', () => {
                 expect(body).toMatchObject({
                   assignees: [CIFlowBot.bot_assignee]
                 });
+                return true;
+              }
+            )
+            .reply(200)
+            .post(
+              `/repos/${owner}/${repo}/issues/comments/${comment_id}/reactions`,
+              body => {
+                expect(body).toMatchObject({content: '+1'});
                 return true;
               }
             )
