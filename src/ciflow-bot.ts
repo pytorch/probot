@@ -1,4 +1,5 @@
 import * as probot from 'probot';
+import minimist from 'minimist';
 
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
 // For more details about the design, please refer to the RFC: https://github.com/pytorch/pytorch/issues/61888
@@ -8,7 +9,10 @@ export class CIFlowBot {
   readonly ctx: probot.Context;
 
   // Static readonly configurations
-  static readonly allowed_commands: string[] = ['ciflow'];
+  static readonly command_ciflow = 'ciflow';
+  static readonly command_ciflow_rerun = 'rerun';
+  static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
+
   static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
@@ -18,7 +22,7 @@ export class CIFlowBot {
 
   // Stateful instance variables
   command = '';
-  command_args: string[] = [];
+  command_args: minimist.ParsedArgs;
   comment_author = '';
   comment_author_permission = '';
   comment_body = '';
@@ -47,11 +51,6 @@ export class CIFlowBot {
     // validate the issue_comment event
     if (this.event === CIFlowBot.event_issue_comment) {
       if (!CIFlowBot.allowed_commands.includes(this.command)) {
-        return false;
-      }
-
-      if (this.comment_author === '') {
-        this.ctx.log.error({ctx: this.ctx}, 'Empty comment author');
         return false;
       }
 
@@ -177,27 +176,54 @@ export class CIFlowBot {
     this.dispatch_labels = labels;
   }
 
-  parseComment(): void {
+  parseCommandArgs(): boolean {
+    switch (this.command) {
+      case CIFlowBot.command_ciflow: {
+        if (this.command_args._.length === 0) {
+          return false;
+        }
+        const subCommand = this.command_args._[0];
+        if (subCommand !== CIFlowBot.command_ciflow_rerun) {
+          return false;
+        }
+        if (typeof this.command_args.l === 'string') {
+          this.command_args.l = [this.command_args.l];
+        }
+        for (const label of this.command_args.l || []) {
+          this.dispatch_labels.push(label);
+        }
+        break;
+      }
+      default:
+        return false;
+    }
+
+    return true;
+  }
+
+  parseComment(): boolean {
     // considering the `m` multi-line comment match
     const re = new RegExp(
-      `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s?(.*)$`,
+      `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s+(.*)$`,
       'm'
     );
 
     const found = this.comment_body?.match(re);
     if (!found) {
-      return;
+      return false;
     }
 
     if (found.length >= 2) {
       this.command = found[1];
     }
     if (found.length === 3) {
-      this.command_args = found[2].split(' ');
+      this.command_args = minimist(found[2].split(/\s+/));
     }
+
+    return this.parseCommandArgs();
   }
 
-  async setContext(): Promise<void> {
+  async setContext(): Promise<boolean> {
     this.event = this.ctx.name;
     const pr = this.ctx.payload?.pull_request || this.ctx.payload?.issue;
     this.pr_number = pr?.number;
@@ -211,18 +237,23 @@ export class CIFlowBot {
     if (this.event === CIFlowBot.event_issue_comment) {
       this.comment_author = this.ctx.payload?.comment?.user?.login;
       this.comment_body = this.ctx.payload?.comment?.body;
-      this.parseComment();
+
+      // if parseComment returns false, we don't need to do anything
+      if (!this.parseComment()) {
+        return false;
+      }
 
       const permission = await this.getUserPermission(this.comment_author);
       this.comment_author_permission = permission;
     }
+
+    return this.valid();
   }
 
   async handler(): Promise<void> {
-    await this.setContext();
-
-    const isValid = this.valid();
+    const isValid = await this.setContext();
     const isRollout = this.rollout();
+
     this.ctx.log.info(
       {
         command: this.command,
