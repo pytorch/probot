@@ -1,7 +1,7 @@
 import nock from 'nock';
 import * as probot from 'probot';
 import * as utils from './utils';
-import {CIFlowBot} from '../src/ciflow-bot';
+import {CIFlowBot, Ruleset} from '../src/ciflow-bot';
 
 nock.disableNetConnect();
 jest.setTimeout(60000); // 60 seconds
@@ -137,6 +137,7 @@ describe('CIFlowBot Integration Tests', () => {
       .reply(200, {token: 'test'});
 
     jest.spyOn(CIFlowBot.prototype, 'rollout').mockReturnValue(true);
+    jest.spyOn(Ruleset.prototype, 'updateDrCIComment').mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -314,5 +315,136 @@ describe('CIFlowBot Integration Tests', () => {
       }
       scope.done();
     }
+  });
+});
+
+describe('Ruleset Integration Tests', () => {
+  const pr_number = 5;
+  const owner = 'ezyang';
+  const repo = 'testing-ideal-computing-machine';
+  const comment_id = 10;
+  const sha = '6f0d678512460e8a1e797d31928b97b5e6244088';
+
+  const event = require('./fixtures/issue_comment.json');
+  event.payload.issue.number = pr_number;
+  event.payload.repository.owner.login = owner;
+  event.payload.repository.name = repo;
+  event.payload.comment.user.login = event.payload.issue.user.login;
+  const github = probot.GitHubAPI();
+
+  beforeEach(() => {
+    nock('https://api.github.com')
+      .post('/app/installations/2/access_tokens')
+      .reply(200, {token: 'test'});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('Update ruleset to DrCI comment block: happy path', async () => {
+    const ctx = new probot.Context(event, github, null);
+    const ruleset = new Ruleset(ctx, owner, repo, pr_number, [
+      'ciflow/default'
+    ]);
+
+    const scope = nock('https://api.github.com')
+      .get(`/repos/${owner}/${repo}/pulls/${pr_number}`)
+      .reply(200, {
+        head: {
+          sha: sha,
+          repo: {
+            name: repo,
+            owner: {
+              login: owner
+            }
+          }
+        }
+      })
+      .get(
+        `/repos/${owner}/${repo}/contents/.github/generated-ciflow-ruleset.json?ref=${sha}`
+      )
+      .reply(200, {
+        content: Buffer.from(
+          JSON.stringify({
+            version: 'v1',
+            label_rules: {
+              'ciflow/default': ['sample_ci.yml']
+            }
+          })
+        ).toString('base64')
+      })
+      .get(`/repos/${owner}/${repo}/issues/${pr_number}/comments?per_page=10`)
+      .reply(200, [
+        {
+          id: comment_id,
+          body: '<!-- dr-ci-comment-start -->\nsome dr ci content here...\n<!-- dr-ci-comment-end -->\n'
+        }
+      ])
+      .patch(`/repos/${owner}/${repo}/issues/comments/${comment_id}`, body => {
+        expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-end -->');
+        return true;
+      })
+      .reply(200);
+    await ruleset.updateDrCIComment();
+
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
+  });
+
+  test('Update ruleset to DrCI comment block: replace existing comments', async () => {
+    const ctx = new probot.Context(event, github, null);
+    const ruleset = new Ruleset(ctx, owner, repo, pr_number, [
+      'ciflow/default'
+    ]);
+
+    const scope = nock('https://api.github.com')
+      .get(`/repos/${owner}/${repo}/pulls/${pr_number}`)
+      .reply(200, {
+        head: {
+          sha: sha,
+          repo: {
+            name: repo,
+            owner: {
+              login: owner
+            }
+          }
+        }
+      })
+      .get(
+        `/repos/${owner}/${repo}/contents/.github/generated-ciflow-ruleset.json?ref=${sha}`
+      )
+      .reply(200, {
+        content: Buffer.from(
+          JSON.stringify({
+            version: 'v1',
+            label_rules: {
+              'ciflow/default': ['sample_ci.yml']
+            }
+          })
+        ).toString('base64')
+      })
+      .get(`/repos/${owner}/${repo}/issues/${pr_number}/comments?per_page=10`)
+      .reply(200, [
+        {
+          id: comment_id,
+          body: '<!-- dr-ci-comment-start -->\nsome dr ci content here...\n<!-- dr-ci-comment-end -->\n<!-- ciflow-comment-start -->\nshould_be_removed\n<!-- ciflow-comment-end -->\n'
+        }
+      ])
+      .patch(`/repos/${owner}/${repo}/issues/comments/${comment_id}`, body => {
+        expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-end -->');
+        expect(JSON.stringify(body)).toContain(':white_check_mark:');
+        expect(JSON.stringify(body)).not.toContain('should_be_removed');
+        return true;
+      })
+      .reply(200);
+    await ruleset.updateDrCIComment();
+
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
   });
 });
