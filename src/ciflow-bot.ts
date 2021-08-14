@@ -428,7 +428,8 @@ export class Ruleset {
     triggeredRows.sort((a, b) => a[0].localeCompare(b[0]));
     skippedRows.sort((a, b) => a[0].localeCompare(b[0]));
 
-    body += '<details><summary>(**Click Me**) CI Flow for GitHub Action Runners</summary>';
+    body +=
+      '<details><summary>(**Click Me**) CI Flow for GitHub Action Runners</summary>';
     body += '\n| Workflows | Labels (bold enabled) | Status  |';
     body += '\n| :-------- | :-------------------- | :------ |';
     body += '\n|             **Triggered Workflows**           |';
