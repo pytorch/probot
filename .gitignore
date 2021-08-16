@@ -98,3 +98,4 @@ dist/
 artifacts/
 
 .vscode
+.history

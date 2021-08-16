@@ -17,7 +17,7 @@ export class CIFlowBot {
   static readonly command_ciflow_rerun = 'rerun';
   static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
 
-  static readonly bot_assignee = 'zhouzhuojie';
+  static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
   static readonly pr_label_prefix = 'ciflow/';
