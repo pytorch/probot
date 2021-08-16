@@ -1,6 +1,10 @@
 import * as probot from 'probot';
 import minimist from 'minimist';
 
+const drCICommentStart = '<!-- dr-ci-comment-start -->';
+const ciflowCommentStart = '<!-- ciflow-comment-start -->';
+const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
+
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
 // For more details about the design, please refer to the RFC: https://github.com/pytorch/pytorch/issues/61888
 // Currently it supports strong validation and slow rollout, and it runs through a pipeline of dispatch strategies.
@@ -157,6 +161,14 @@ export class CIFlowBot {
         repo: this.repo
       });
     }
+
+    await new Ruleset(
+      this.ctx,
+      this.owner,
+      this.repo,
+      this.pr_number,
+      this.dispatch_labels
+    ).updateDrCIComment();
   }
 
   async setLabels(): Promise<void> {
@@ -212,6 +224,14 @@ export class CIFlowBot {
   }
 
   parseComment(): boolean {
+    // skip if the comment edit event is from the bot comment itself
+    if (
+      this.command.includes(ciflowCommentStart) ||
+      this.command.includes(drCICommentStart)
+    ) {
+      return false;
+    }
+
     // considering the `m` multi-line comment match
     const re = new RegExp(
       `^.*@${CIFlowBot.bot_assignee}\\s+(\\w+)\\s+(.*)$`,
@@ -300,5 +320,166 @@ export class CIFlowBot {
     app.on('pull_request.synchronize', webhookHandler);
     app.on('issue_comment.created', webhookHandler);
     app.on('issue_comment.edited', webhookHandler);
+  }
+}
+
+interface IRulesetJson {
+  version: string;
+  label_rules: {[key: string]: string[]};
+}
+
+// Ruleset is a class that represents the configuration of ciflow rules
+// defined by in the pytorch/pytorch repo (.github/generated-ciflow-ruleset.json)
+// Its purpose here for the CIFlowBot is to explicitly visualize the ruleset on PR
+export class Ruleset {
+  static readonly ruleset_json_path = '.github/generated-ciflow-ruleset.json';
+
+  constructor(
+    readonly ctx: probot.Context,
+    readonly owner: string,
+    readonly repo: string,
+    readonly pr_number: number,
+    readonly labels: string[]
+  ) {}
+
+  async fetchRulesetJson(): Promise<IRulesetJson | null> {
+    const prRes = await this.ctx.github.pulls.get({
+      owner: this.owner,
+      repo: this.repo,
+      pull_number: this.pr_number
+    });
+    const head = prRes?.data?.head;
+    const contentRes = await this.ctx.github.repos.getContents({
+      ref: head.sha,
+      owner: head.repo.owner.login,
+      repo: head.repo.name,
+      path: Ruleset.ruleset_json_path
+    });
+
+    if ('content' in contentRes.data) {
+      return JSON.parse(
+        Buffer.from(contentRes?.data?.content, 'base64').toString('utf-8')
+      );
+    }
+    return null;
+  }
+
+  async fetchDrCIComment(
+    nTimes = 8,
+    delayInSeconds = 6,
+    perPage = 10
+  ): Promise<[number, string]> {
+    for (let i = 0; i < nTimes; i++) {
+      const commentsRes = await this.ctx.github.issues.listComments({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: this.pr_number,
+        per_page: perPage
+      });
+      for (const comment of commentsRes.data) {
+        if (comment.body.includes('<!-- dr-ci-comment-start -->')) {
+          return [comment.id, comment.body];
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * delayInSeconds));
+    }
+    return [0, ''];
+  }
+
+  genCommentBody(ruleset: IRulesetJson, labels: Set<string>): string {
+    let body = '\n----';
+    body += '\n## :atom_symbol: CI Flow Ruleset';
+    body += `\nRuleset - Version: \`${ruleset.version}\``;
+    body += `\nRuleset - Current ciflow labels: \`${Array.from(labels)}\``;
+
+    const workflowToLabelMap = {};
+
+    for (const l in ruleset.label_rules) {
+      for (const w of ruleset.label_rules[l]) {
+        workflowToLabelMap[w] = workflowToLabelMap[w] || new Set<string>();
+        workflowToLabelMap[w].add(l);
+      }
+    }
+
+    const triggeredRows = [];
+    const skippedRows = [];
+    for (const w in workflowToLabelMap) {
+      let enabled = false;
+      for (const l of Array.from(workflowToLabelMap[w])) {
+        if (labels.has(l as string)) {
+          enabled = true;
+          break;
+        }
+      }
+
+      const ls = Array.from(workflowToLabelMap[w]);
+      const rowLabels = (ls as string[])
+        .sort((a, b) => a.localeCompare(b))
+        .map(l => {
+          return labels.has(l) ? `**\`${l}\`**` : `\`${l}\``;
+        });
+
+      if (enabled) {
+        triggeredRows.push([w, rowLabels, ':white_check_mark: triggered']);
+      } else {
+        skippedRows.push([w, rowLabels, ':no_entry_sign: skipped']);
+      }
+    }
+    triggeredRows.sort((a, b) => a[0].localeCompare(b[0]));
+    skippedRows.sort((a, b) => a[0].localeCompare(b[0]));
+
+    body +=
+      '<details><summary>(**Click Me**) CI Flow for GitHub Action Runners</summary>';
+    body += '\n| Workflows | Labels (bold enabled) | Status  |';
+    body += '\n| :-------- | :-------------------- | :------ |';
+    body += '\n|             **Triggered Workflows**           |';
+    for (const row of triggeredRows) {
+      body += `\n| ${row[0]} | ${row[1].join(', ')} | ${row[2]} |`;
+    }
+    body += '\n|             **Skipped Workflows**           |';
+    for (const row of skippedRows) {
+      body += `\n| ${row[0]} | ${row[1].join(', ')} | ${row[2]} |`;
+    }
+    body += '\n';
+    body += '</details>';
+
+    return body;
+  }
+
+  async updateDrCIComment(): Promise<void> {
+    const ruleset = await this.fetchRulesetJson();
+    if (!ruleset) {
+      this.ctx.log.error(
+        {pr_number: this.pr_number},
+        'failed to fetchRulesetJson'
+      );
+      return;
+    }
+
+    const [commentID, commentBody] = await this.fetchDrCIComment();
+    if (commentID === 0) {
+      this.ctx.log.error(
+        {pr_number: this.pr_number},
+        'failed to fetchDrCIComment'
+      );
+      return;
+    }
+
+    let body = this.genCommentBody(ruleset, new Set(this.labels));
+    if (commentBody.includes(ciflowCommentStart)) {
+      body = commentBody.replace(
+        new RegExp(`${ciflowCommentStart}(.*?)${ciflowCommentEnd}`, 's'),
+        `${ciflowCommentStart}${body}${ciflowCommentEnd}`
+      );
+    } else {
+      body = `${commentBody}\n${ciflowCommentStart}${body}${ciflowCommentEnd}`;
+    }
+
+    await this.ctx.github.issues.updateComment({
+      body,
+      owner: this.owner,
+      repo: this.repo,
+      comment_id: commentID
+    });
   }
 }
