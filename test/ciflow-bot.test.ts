@@ -137,7 +137,7 @@ describe('CIFlowBot Integration Tests', () => {
       .reply(200, {token: 'test'});
 
     jest.spyOn(CIFlowBot.prototype, 'rollout').mockReturnValue(true);
-    jest.spyOn(Ruleset.prototype, 'updateDrCIComment').mockReturnValue(null);
+    jest.spyOn(Ruleset.prototype, 'upsertRootComment').mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -323,6 +323,7 @@ describe('Ruleset Integration Tests', () => {
   const owner = 'ezyang';
   const repo = 'testing-ideal-computing-machine';
   const comment_id = 10;
+  const comment_node_id = 'abcd';
   const sha = '6f0d678512460e8a1e797d31928b97b5e6244088';
 
   const event = require('./fixtures/issue_comment.json');
@@ -342,7 +343,7 @@ describe('Ruleset Integration Tests', () => {
     jest.restoreAllMocks();
   });
 
-  test('Update ruleset to DrCI comment block: happy path', async () => {
+  test('Upsert ruleset to the root comment block: create new comment when not found', async () => {
     const ctx = new probot.Context(event, github, null);
     const ruleset = new Ruleset(ctx, owner, repo, pr_number, [
       'ciflow/default'
@@ -375,18 +376,24 @@ describe('Ruleset Integration Tests', () => {
         ).toString('base64')
       })
       .get(`/repos/${owner}/${repo}/issues/${pr_number}/comments?per_page=10`)
-      .reply(200, [
-        {
-          id: comment_id,
-          body: '<!-- dr-ci-comment-start -->\nsome dr ci content here...\n<!-- dr-ci-comment-end -->\n'
-        }
-      ])
-      .patch(`/repos/${owner}/${repo}/issues/comments/${comment_id}`, body => {
+      .reply(200, [])
+      .post(`/repos/${owner}/${repo}/issues/${pr_number}/comments`, body => {
+        expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-start -->');
         expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-end -->');
         return true;
       })
+      .reply(200, {
+        node_id: comment_node_id,
+        id: comment_id
+      })
+      .post('/graphql', body => {
+        expect(JSON.stringify(body)).toContain('mutation');
+        expect(JSON.stringify(body)).toContain('node_id');
+        expect(JSON.stringify(body)).toContain(comment_node_id);
+        return true;
+      })
       .reply(200);
-    await ruleset.updateDrCIComment();
+    await ruleset.upsertRootComment();
 
     if (!scope.isDone()) {
       console.error('pending mocks: %j', scope.pendingMocks());
@@ -394,7 +401,7 @@ describe('Ruleset Integration Tests', () => {
     scope.done();
   });
 
-  test('Update ruleset to DrCI comment block: replace existing comments', async () => {
+  test('Upsert ruleset to the root comment block: update existing comment when found', async () => {
     const ctx = new probot.Context(event, github, null);
     const ruleset = new Ruleset(ctx, owner, repo, pr_number, [
       'ciflow/default'
@@ -430,17 +437,26 @@ describe('Ruleset Integration Tests', () => {
       .reply(200, [
         {
           id: comment_id,
-          body: '<!-- dr-ci-comment-start -->\nsome dr ci content here...\n<!-- dr-ci-comment-end -->\n<!-- ciflow-comment-start -->\nshould_be_removed\n<!-- ciflow-comment-end -->\n'
+          node_id: comment_node_id,
+          body: '<!-- ciflow-comment-start -->\nshould_be_removed\n<!-- ciflow-comment-end -->\nshould_not_be_removed \n'
         }
       ])
       .patch(`/repos/${owner}/${repo}/issues/comments/${comment_id}`, body => {
         expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-end -->');
         expect(JSON.stringify(body)).toContain(':white_check_mark:');
+        expect(JSON.stringify(body)).toContain('should_not_be_removed');
         expect(JSON.stringify(body)).not.toContain('should_be_removed');
         return true;
       })
+      .reply(200)
+      .post('/graphql', body => {
+        expect(JSON.stringify(body)).toContain('mutation');
+        expect(JSON.stringify(body)).toContain('node_id');
+        expect(JSON.stringify(body)).toContain(comment_node_id);
+        return true;
+      })
       .reply(200);
-    await ruleset.updateDrCIComment();
+    await ruleset.upsertRootComment();
 
     if (!scope.isDone()) {
       console.error('pending mocks: %j', scope.pendingMocks());
