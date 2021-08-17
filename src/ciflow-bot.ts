@@ -20,7 +20,16 @@ export class CIFlowBot {
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
   static readonly pr_label_prefix = 'ciflow/';
-  static readonly rollout_users = ['zhouzhuojie']; // slow rollout to specific group of users first
+  static readonly rollout_users = [
+    'driazati',
+    'janeyx99',
+    'malfet',
+    'samestep',
+    'seemethere',
+    'walterddr',
+    'zhouzhuojie'
+  ]; // slow rollout to specific group of users first
+
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
 
   // Stateful instance variables
