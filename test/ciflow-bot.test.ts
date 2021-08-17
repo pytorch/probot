@@ -382,17 +382,7 @@ describe('Ruleset Integration Tests', () => {
         expect(JSON.stringify(body)).toContain('<!-- ciflow-comment-end -->');
         return true;
       })
-      .reply(200, {
-        node_id: comment_node_id,
-        id: comment_id
-      })
-      .post('/graphql', body => {
-        expect(JSON.stringify(body)).toContain('mutation');
-        expect(JSON.stringify(body)).toContain('node_id');
-        expect(JSON.stringify(body)).toContain(comment_node_id);
-        return true;
-      })
-      .reply(200);
+      .reply(200, {});
     await ruleset.upsertRootComment();
 
     if (!scope.isDone()) {
@@ -446,13 +436,6 @@ describe('Ruleset Integration Tests', () => {
         expect(JSON.stringify(body)).toContain(':white_check_mark:');
         expect(JSON.stringify(body)).toContain('should_not_be_removed');
         expect(JSON.stringify(body)).not.toContain('should_be_removed');
-        return true;
-      })
-      .reply(200)
-      .post('/graphql', body => {
-        expect(JSON.stringify(body)).toContain('mutation');
-        expect(JSON.stringify(body)).toContain('node_id');
-        expect(JSON.stringify(body)).toContain(comment_node_id);
         return true;
       })
       .reply(200);

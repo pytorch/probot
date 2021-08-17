@@ -16,7 +16,7 @@ export class CIFlowBot {
   static readonly command_ciflow_rerun = 'rerun';
   static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
 
-  static readonly bot_assignee = 'zhouzhuojie';
+  static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
   static readonly pr_label_prefix = 'ciflow/';
@@ -366,7 +366,7 @@ export class Ruleset {
     return null;
   }
 
-  async fetchRootComment(perPage = 10): Promise<[number, string, string]> {
+  async fetchRootComment(perPage = 10): Promise<[number, string]> {
     const commentsRes = await this.ctx.github.issues.listComments({
       owner: this.owner,
       repo: this.repo,
@@ -375,19 +375,18 @@ export class Ruleset {
     });
     for (const comment of commentsRes.data) {
       if (comment.body.includes(ciflowCommentStart)) {
-        return [comment.id, comment.node_id, comment.body];
+        return [comment.id, comment.body];
       }
     }
-    return [0, '', ''];
+    return [0, ''];
   }
 
   genRootCommentBody(ruleset: IRulesetJson, labels: Set<string>): string {
-    let body = '\n<br/>\n';
-    body += '\n## :atom_symbol: CI Flow Ruleset';
+    let body = '\n<details><summary>CI Flow Status</summary><br/>\n';
+    body += '\n## :atom_symbol: CI Flow';
     body += `\nRuleset - Version: \`${ruleset.version}\``;
-    body += `\nRuleset - Current file: ${this.ruleset_json_link}`;
-    body += `\nPR Context - ciflow labels: \`${Array.from(labels)}\``;
-    body += `\nPR Context - ciflow labels updated at: ${new Date().toLocaleString()}`;
+    body += `\nRuleset - File: ${this.ruleset_json_link}`;
+    body += `\nPR ciflow labels: \`${Array.from(labels)}\``;
 
     const workflowToLabelMap = {};
 
@@ -438,17 +437,20 @@ export class Ruleset {
 
     body += `
 <br/>
-<details><summary>CI Flow @pytorchbot commands</summary>
+You can add a comment to the PR and tag @pytorchbot with the following commands:
+<br/>
 
 \`\`\`sh
 # ciflow rerun, "ciflow/default" will always be added automatically
 @pytorchbot ciflow rerun
 
-
-# ciflow rerun with additional labels, equivalent to adding these labels manually and trigger the rerun
+# ciflow rerun with additional labels "-l <ciflow/label_name>", which is equivalent to adding these labels manually and trigger the rerun
 @pytorchbot ciflow rerun -l ciflow/scheduled -l ciflow/slow
-@pytorchbot ciflow rerun -l ciflow/cuda -l ciflow/cpu
 \`\`\`
+
+<br/>
+
+For more information, please take a look at the [CI Flow Wiki](https://github.com/pytorch/pytorch/wiki/Continuous-Integration#using-ciflow).
 </details>`;
 
     return body;
@@ -465,7 +467,7 @@ export class Ruleset {
     }
 
     // eslint-disable-next-line prefer-const
-    let [commentId, commentNodeId, commentBody] = await this.fetchRootComment();
+    let [commentId, commentBody] = await this.fetchRootComment();
 
     let body = this.genRootCommentBody(ruleset, new Set(this.labels));
     if (commentBody.includes(ciflowCommentStart)) {
@@ -485,7 +487,6 @@ export class Ruleset {
         issue_number: this.pr_number
       });
       commentId = res.data.id;
-      commentNodeId = res.data.node_id;
     } else {
       await this.ctx.github.issues.updateComment({
         body,
@@ -494,17 +495,5 @@ export class Ruleset {
         comment_id: commentId
       });
     }
-
-    await this.ctx.github.graphql(
-      `mutation MinimizeComment($node_id: ID!) {
-        minimizeComment(input: {
-          subjectId: $node_id,
-          classifier: RESOLVED
-        }) {
-          clientMutationId
-        }
-      }`,
-      {node_id: commentNodeId}
-    );
   }
 }
