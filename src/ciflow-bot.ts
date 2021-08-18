@@ -29,7 +29,7 @@ export class CIFlowBot {
     'walterddr',
     'zhouzhuojie',
     'suo',
-    'mruberry,
+    'mruberry',
     'ezyang'
   ]; // slow rollout to specific group of users first
 
