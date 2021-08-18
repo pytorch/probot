@@ -27,7 +27,10 @@ export class CIFlowBot {
     'samestep',
     'seemethere',
     'walterddr',
-    'zhouzhuojie'
+    'zhouzhuojie',
+    'suo',
+    'mruberry,
+    'ezyang'
   ]; // slow rollout to specific group of users first
 
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
