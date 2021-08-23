@@ -8,8 +8,8 @@ jest.setTimeout(60000); // 60 seconds
 
 describe('CIFlowBot Unit Tests', () => {
   const pr_number = 5;
-  const owner = 'ezyang';
-  const repo = 'testing-ideal-computing-machine';
+  const owner = 'pytorch';
+  const repo = 'pytorch';
 
   beforeEach(() => {
     jest
@@ -45,10 +45,13 @@ describe('CIFlowBot Unit Tests', () => {
 
   describe('parseContext for issue_comment.created with valid or invalid comments', () => {
     const event = require('./fixtures/issue_comment.json');
-    event.payload.issue.number = pr_number;
-    event.payload.repository.owner.login = owner;
-    event.payload.repository.name = repo;
-    event.payload.comment.user.login = event.payload.issue.user.login;
+
+    beforeEach(() => {
+      event.payload.issue.number = pr_number;
+      event.payload.repository.owner.login = owner;
+      event.payload.repository.name = repo;
+      event.payload.comment.user.login = event.payload.issue.user.login;
+    });
 
     const validComments = [
       `@${CIFlowBot.bot_assignee} ciflow rerun`,
@@ -119,13 +122,26 @@ describe('CIFlowBot Unit Tests', () => {
     const isValid = await ciflow.setContext();
     expect(isValid).toBe(false);
   });
+
+  test('parseContext for issue_comment.created invalid owner/repo', async () => {
+    const event = require('./fixtures/issue_comment.json');
+    event.payload.issue.number = pr_number;
+    event.payload.repository.owner.login = 'invalid';
+    event.payload.repository.name = 'invalid';
+    event.payload.comment.body = `@${CIFlowBot.bot_assignee} ciflow rerun`;
+    event.payload.comment.user.login = event.payload.issue.user.login;
+
+    const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+    const isValid = await ciflow.setContext();
+    expect(isValid).toBe(false);
+  });
 });
 
 describe('CIFlowBot Integration Tests', () => {
   let p: probot.Probot;
   const pr_number = 5;
-  const owner = 'ezyang';
-  const repo = 'testing-ideal-computing-machine';
+  const owner = 'pytorch';
+  const repo = 'pytorch';
   const comment_id = 10;
 
   beforeEach(() => {
@@ -194,11 +210,14 @@ describe('CIFlowBot Integration Tests', () => {
 
   describe('issue_comment.created event: add_default_labels strategy happy path', () => {
     const event = require('./fixtures/issue_comment.json');
-    event.payload.issue.number = pr_number;
-    event.payload.repository.owner.login = owner;
-    event.payload.repository.name = repo;
-    event.payload.comment.user.login = 'non-exist-user';
-    event.payload.comment.id = comment_id;
+
+    beforeEach(() => {
+      event.payload.issue.number = pr_number;
+      event.payload.repository.owner.login = owner;
+      event.payload.repository.name = repo;
+      event.payload.comment.user.login = 'non-exist-user';
+      event.payload.comment.id = comment_id;
+    });
 
     test.each([
       [`@${CIFlowBot.bot_assignee} ciflow rerun`, ['ciflow/default']],
@@ -271,10 +290,13 @@ describe('CIFlowBot Integration Tests', () => {
 
   describe('issue_comment.created event: add_default_labels strategy with invalid parseComments', () => {
     const event = require('./fixtures/issue_comment.json');
-    event.payload.issue.number = pr_number;
-    event.payload.repository.owner.login = owner;
-    event.payload.repository.name = repo;
-    event.payload.comment.user.login = 'non-exist-user';
+
+    beforeEach(() => {
+      event.payload.issue.number = pr_number;
+      event.payload.repository.owner.login = owner;
+      event.payload.repository.name = repo;
+      event.payload.comment.user.login = 'non-exist-user';
+    });
 
     test.each([
       `invalid`,

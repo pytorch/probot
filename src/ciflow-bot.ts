@@ -15,6 +15,7 @@ export class CIFlowBot {
   static readonly command_ciflow = 'ciflow';
   static readonly command_ciflow_rerun = 'rerun';
   static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
+  static readonly allowed_repos = ['pytorch/pytorch'];
 
   static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
@@ -274,6 +275,9 @@ export class CIFlowBot {
       ?.map(label => label.name);
     this.owner = this.ctx.payload?.repository?.owner?.login;
     this.repo = this.ctx.payload?.repository?.name;
+    if (!CIFlowBot.allowed_repos.includes(`${this.owner}/${this.repo}`)) {
+      return false;
+    }
 
     if (this.event === CIFlowBot.event_issue_comment) {
       this.comment_author = this.ctx.payload?.comment?.user?.login;
