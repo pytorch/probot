@@ -51,7 +51,7 @@ As a courtesy to others, please do not edit the subscriptions of users who are n
     ).toStrictEqual({
       critical: ['ezyang'],
       'high priority': ['ezyang'],
-      'module: autograd': ['ezyang'],
+      'module: autograd': ['ezyang']
     });
   });
 });

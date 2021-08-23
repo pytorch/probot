@@ -49,25 +49,25 @@ Some header text
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
 
-    nockTracker(`
+    nockTracker(
+      `
 Some header text
 
 * ci/windows @ezyang
-`, 'seemethere/test-repo');
+`,
+      'seemethere/test-repo'
+    );
 
     const payload = require('./fixtures/pull_request.labeled');
     payload['pull_request']['body'] = 'Arf arf';
 
     const scope = nock('https://api.github.com')
-      .patch(
-        '/repos/seemethere/test-repo/pulls/20',
-        (body: any) => {
-          expect(body).toMatchObject({
-            body: 'Arf arf\n\ncc @ezyang'
-          });
-          return true;
-        }
-      )
+      .patch('/repos/seemethere/test-repo/pulls/20', (body: any) => {
+        expect(body).toMatchObject({
+          body: 'Arf arf\n\ncc @ezyang'
+        });
+        return true;
+      })
       .reply(200);
 
     await probot.receive({name: 'pull_request', payload, id: '2'});

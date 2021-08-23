@@ -428,7 +428,8 @@ describe('Ruleset Integration Tests', () => {
         {
           id: comment_id,
           node_id: comment_node_id,
-          body: '<!-- ciflow-comment-start -->\nshould_be_removed\n<!-- ciflow-comment-end -->\nshould_not_be_removed \n'
+          body:
+            '<!-- ciflow-comment-start -->\nshould_be_removed\n<!-- ciflow-comment-end -->\nshould_not_be_removed \n'
         }
       ])
       .patch(`/repos/${owner}/${repo}/issues/comments/${comment_id}`, body => {
