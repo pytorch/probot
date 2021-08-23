@@ -55,10 +55,10 @@ function myBot(app: probot.Application): void {
     }
   });
 
-  app.on('issues.labeled', async context => {
+  async function runBotForLabels(context: probot.Context, payload_type: string): Promise<void> {
     const subscriptions = await loadSubscriptions(context);
-
-    const labels = context.payload['issue']['labels'].map(e => e['name']);
+    console.log("payload_type=", payload_type);
+    const labels = context.payload[payload_type]['labels'].map(e => e['name']);
     context.log({labels});
     const cc = new Set();
     // eslint-disable-next-line github/array-foreach
@@ -70,7 +70,7 @@ function myBot(app: probot.Application): void {
     });
     context.log({cc: Array.from(cc)}, 'from subscriptions');
     if (cc.size) {
-      const body = context.payload['issue']['body'];
+      const body = context.payload[payload_type]['body'];
       const reCC = /cc( +@[a-zA-Z0-9-/]+)+/;
       const oldCCMatch = body.match(reCC);
       const prevCC = new Set();
@@ -96,13 +96,25 @@ function myBot(app: probot.Application): void {
           ? body.replace(reCC, newCCString)
           : `${body}\n\n${newCCString}`;
         context.log({newBody});
-        await context.github.issues.update(context.issue({body: newBody}));
+        if (payload_type == 'issue') {
+            await context.github.issues.update(context.issue({body: newBody}));
+        }
+        else if (payload_type == 'pull_request') {
+            await context.github.pulls.update(context.issue({body: newBody}));
+        }
       } else {
         context.log('no action: no change from existing cc list on issue');
       }
     } else {
       context.log('no action: cc list from subscription is empty');
     }
+  }
+
+  app.on('issues.labeled', async context => {
+    await runBotForLabels(context, 'issue');
+  });
+  app.on('pull_request.labeled', async context => {
+    await runBotForLabels(context, 'pull_request');
   });
 }
 
