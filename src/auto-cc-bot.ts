@@ -1,14 +1,10 @@
 import {parseSubscriptions} from './subscriptions';
+import {repoKey} from './utils';
 import * as probot from 'probot';
 
 function myBot(app: probot.Application): void {
   const repoConfigs = {};
   const repoSubscriptions = {};
-
-  function repoKey(context: probot.Context): string {
-    const repo = context.repo();
-    return `${repo.owner}/${repo.repo}`;
-  }
 
   async function loadConfig(
     context: probot.Context,
