@@ -1,22 +1,10 @@
 import {parseSubscriptions} from './subscriptions';
-import {repoKey} from './utils';
+import {repoKey, CachedConfigTracker} from './utils';
 import * as probot from 'probot';
 
 function myBot(app: probot.Application): void {
-  const repoConfigs = {};
+  const tracker = new CachedConfigTracker(app);
   const repoSubscriptions = {};
-
-  async function loadConfig(
-    context: probot.Context,
-    force = false
-  ): Promise<object> {
-    const key = repoKey(context);
-    if (!(key in repoConfigs) || force) {
-      context.log({key}, 'loadConfig');
-      repoConfigs[key] = await context.config('pytorch-probot.yml');
-    }
-    return repoConfigs[key];
-  }
 
   async function loadSubscriptions(
     context: probot.Context,
@@ -25,7 +13,7 @@ function myBot(app: probot.Application): void {
     const key = repoKey(context);
     if (!(key in repoSubscriptions) || force) {
       context.log({key}, 'loadSubscriptions');
-      const config = await loadConfig(context);
+      const config = await tracker.loadConfig(context);
       const subsPayload = await context.github.issues.get(
         context.repo({number: config['tracking_issue']})
       );
@@ -38,16 +26,10 @@ function myBot(app: probot.Application): void {
   }
 
   app.on('issues.edited', async context => {
-    const config = await loadConfig(context);
+    const config = await tracker.loadConfig(context);
     const issue = context.issue();
     if (config['tracking_issue'] === issue.number) {
       await loadSubscriptions(context, /* force */ true);
-    }
-  });
-
-  app.on('push', async context => {
-    if (context.payload.ref === 'refs/heads/master') {
-      await loadConfig(context, /* force */ true);
     }
   });
 
