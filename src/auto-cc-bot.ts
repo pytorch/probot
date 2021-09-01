@@ -33,7 +33,7 @@ function myBot(app: probot.Application): void {
     if (cc.size) {
       const body = context.payload[payloadType]['body'];
       const reCC = /cc( +@[a-zA-Z0-9-/]+)+/;
-      const oldCCMatch = body.match(reCC);
+      const oldCCMatch = body ? body.match(reCC) : null;
       const prevCC = new Set();
       if (oldCCMatch) {
         const oldCCString = oldCCMatch[0];
@@ -53,9 +53,11 @@ function myBot(app: probot.Application): void {
         cc.forEach(u => {
           newCCString += ` @${u}`;
         });
-        const newBody = oldCCMatch
-          ? body.replace(reCC, newCCString)
-          : `${body}\n\n${newCCString}`;
+        const newBody = body
+          ? oldCCMatch
+            ? body.replace(reCC, newCCString)
+            : `${body}\n\n${newCCString}`
+          : newCCString;
         context.log({newBody});
         if (payloadType === 'issue') {
           await context.github.issues.update(context.issue({body: newBody}));

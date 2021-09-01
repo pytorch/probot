@@ -43,6 +43,36 @@ Some header text
 
     scope.done();
   });
+  test('add a cc to issue with empty body', async() => {
+    nock('https://api.github.com')
+      .post('/app/installations/2/access_tokens')
+      .reply(200, {token: 'test'});
+
+    nockTracker(`
+Some header text
+
+* testlabel @ezyang
+`);
+
+    const payload = require('./fixtures/issues.labeled'); // testlabel
+    payload['issue']['body'] = null;
+
+    const scope = nock('https://api.github.com')
+      .patch(
+        '/repos/ezyang/testing-ideal-computing-machine/issues/5',
+        (body: any) => {
+          expect(body).toMatchObject({
+            body: 'cc @ezyang'
+          });
+          return true;
+        }
+      )
+      .reply(200);
+
+    await probot.receive({name: 'issues', payload, id: '2'});
+
+    scope.done();
+  });
 
   test('add a cc when PR is labeled', async () => {
     nock('https://api.github.com')
