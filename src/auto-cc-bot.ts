@@ -1,37 +1,17 @@
 import {parseSubscriptions} from './subscriptions';
-import {repoKey, CachedConfigTracker} from './utils';
+import {CachedIssueTracker} from './utils';
 import * as probot from 'probot';
 
 function myBot(app: probot.Application): void {
-  const tracker = new CachedConfigTracker(app);
-  const repoSubscriptions = {};
+  const tracker = new CachedIssueTracker(
+    app,
+    'tracking_issue',
+    parseSubscriptions
+  );
 
-  async function loadSubscriptions(
-    context: probot.Context,
-    force = false
-  ): Promise<object> {
-    const key = repoKey(context);
-    if (!(key in repoSubscriptions) || force) {
-      context.log({key}, 'loadSubscriptions');
-      const config = await tracker.loadConfig(context);
-      const subsPayload = await context.github.issues.get(
-        context.repo({number: config['tracking_issue']})
-      );
-      const subsText = subsPayload.data['body'];
-      app.log({subsText});
-      repoSubscriptions[key] = parseSubscriptions(subsText);
-      app.log({subscriptions: repoSubscriptions[key]});
-    }
-    return repoSubscriptions[key];
+  async function loadSubscriptions(context: probot.Context): Promise<object> {
+    return tracker.loadIssue(context);
   }
-
-  app.on('issues.edited', async context => {
-    const config = await tracker.loadConfig(context);
-    const issue = context.issue();
-    if (config['tracking_issue'] === issue.number) {
-      await loadSubscriptions(context, /* force */ true);
-    }
-  });
 
   async function runBotForLabels(
     context: probot.Context,
