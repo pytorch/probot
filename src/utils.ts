@@ -54,12 +54,19 @@ export class CachedIssueTracker extends CachedConfigTracker {
     if (!(key in this.repoIssues) || force) {
       context.log({key}, 'loadIssue');
       const config = await this.loadConfig(context);
-      const subsPayload = await context.github.issues.get(
-        context.repo({issue_number: config[this.configName]})
-      );
-      const subsText = subsPayload.data['body'];
-      context.log({subsText});
-      this.repoIssues[key] = this.issueParser(subsText);
+      if (config != null && this.configName in config) {
+        const subsPayload = await context.github.issues.get(
+          context.repo({issue_number: config[this.configName]})
+        );
+        const subsText = subsPayload.data['body'];
+        context.log({subsText});
+        this.repoIssues[key] = this.issueParser(subsText);
+      } else {
+        context.log(
+          `${this.configName} is not found in config, initializing with empty string`
+        );
+        this.repoIssues[key] = this.issueParser('');
+      }
       context.log({issues: this.repoIssues[key]});
     }
     return this.repoIssues[key];

@@ -13,6 +13,20 @@ describe('auto-cc-bot', () => {
     probot.load(myProbotApp);
   });
 
+  test('no-op when tracker is missing', async() => {
+    nock('https://api.github.com')
+      .get('/repos/ezyang/testing-ideal-computing-machine/contents/.github/pytorch-probot.yml')
+      .reply(404, { message: "There is nothing here"});
+
+    // Not sure why, but ProBot will look here if config is missing in the actual repo
+    nock('https://api.github.com')
+      .get('/repos/ezyang/.github/contents/.github/pytorch-probot.yml')
+      .reply(404, { message: "There is nothing here"});
+
+    const payload = require('./fixtures/issues.labeled'); // testlabel
+    await probot.receive({name: 'issues', payload, id: '2'});
+  });
+
   test('add a cc when issue is labeled', async () => {
     nock('https://api.github.com')
       .post('/app/installations/2/access_tokens')

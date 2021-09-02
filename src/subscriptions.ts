@@ -2,6 +2,9 @@ export function parseSubscriptions(rawSubsText): object {
   const subsText = rawSubsText.replace('\r', '');
   const subsRows = subsText.match(/^\*.+/gm);
   const subscriptions = {};
+  if (subsRows == null) {
+    return subscriptions;
+  }
   // eslint-disable-next-line github/array-foreach
   subsRows.forEach((row: string) => {
     const labelMatch = row.match(/^\* +([^@]+)/);
