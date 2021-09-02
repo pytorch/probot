@@ -19,7 +19,7 @@ function parseIssue(rawText: string): object {
       return;
     }
     if (elements.length === 1) {
-      retval[elements[0].substr(1)] = ['ciflow/default'];
+      retval[elements[0].substr(1)] = CIFlowBot.defaultLabels;
     } else {
       retval[elements[0].substr(1)] = elements.slice(1);
     }
@@ -46,6 +46,7 @@ export class CIFlowBot {
   static readonly pr_label_prefix = 'ciflow/';
 
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
+  static readonly defaultLabels = [ 'ciflow/default'];
 
   // Stateful instance variables
   command = '';
@@ -56,6 +57,7 @@ export class CIFlowBot {
   comment_body = '';
   dispatch_labels: string[] = [];
   dispatch_strategies = [CIFlowBot.strategy_add_default_labels];
+  default_labels = CIFlowBot.defaultLabels;
   event = '';
   owner = '';
   pr_author = '';
@@ -107,22 +109,19 @@ export class CIFlowBot {
     return res?.data?.permission;
   }
 
-  async rollout(): Promise<boolean> {
-    if (this.tracker == null) {
-      return true;
-    }
-    const rolloutUsers = await this.tracker.loadIssue(this.ctx);
+  async getUserLabels(): Promise<Array<string>> {
+    const rolloutUsers = this.tracker != null ? await this.tracker.loadIssue(this.ctx) : {};
     if (this.pr_author in rolloutUsers) {
-      return true;
+      return rolloutUsers[this.pr_author];
     }
-    return false;
+    return [];
   }
 
   async dispatch(): Promise<void> {
     // Dispatch_strategies is like a pipeline of functions we can apply to
     // change `this.dispatch_labels`. We can add other dispatch algorithms
     // based on the ctx or user instructions.
-    // The future algorithms can manupulate the `this.dispatch_labels`, and
+    // The future algorithms can manipulate the `this.dispatch_labels`, and
     // individual workflows that can build up `if` conditions on the labels
     // can be found in `.github/workflows` of pytorch/pytorch repo.
     this.dispatch_strategies.map(this.dispatchStrategyFunc.bind(this));
@@ -149,11 +148,11 @@ export class CIFlowBot {
   dispatchStrategyFunc(strategyName: string): void {
     switch (strategyName) {
       case CIFlowBot.strategy_add_default_labels:
-        // strategy_add_default_labels: just make sure the we add a 'ciflow/default' to the existing set of pr_labels
+        // strategy_add_default_labels: just make sure the we add `default_labels` to the existing set of pr_labels
         if (this.dispatch_labels.length === 0) {
           this.dispatch_labels = this.pr_labels;
         }
-        this.dispatch_labels = ['ciflow/default', ...this.dispatch_labels];
+        this.dispatch_labels = this.default_labels.concat(this.dispatch_labels);
         break;
       default: {
         this.ctx.log.error({strategyName}, 'Unknown dispatch strategy');
@@ -317,7 +316,7 @@ export class CIFlowBot {
 
   async handler(): Promise<void> {
     const isValid = await this.setContext();
-    const isRollout = await this.rollout();
+    this.default_labels = await this.getUserLabels();
 
     this.ctx.log.info(
       {
@@ -333,13 +332,13 @@ export class CIFlowBot {
         pr_labels: this.pr_labels,
         pr_number: this.pr_number,
         repo: this.repo,
-        rollout: isRollout,
+        default_labels: this.default_labels,
         valid: isValid
       },
       'ciflow dispatch started!'
     );
 
-    if (!isValid || !isRollout) {
+    if (!isValid || this.default_labels.length == 0) {
       return;
     }
     await this.dispatch();

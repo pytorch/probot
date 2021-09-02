@@ -153,9 +153,8 @@ describe('CIFlowBot Integration Tests', () => {
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
 
-    nockTracker('@malfet', 'pytorch/pytorch', 'ciflow_tracking_issue: 6');
+    nockTracker('@zzj-bot', 'pytorch/pytorch', 'ciflow_tracking_issue: 6');
 
-    jest.spyOn(CIFlowBot.prototype, 'rollout').mockResolvedValue(true);
     jest.spyOn(Ruleset.prototype, 'upsertRootComment').mockReturnValue(null);
   });
 
@@ -195,7 +194,7 @@ describe('CIFlowBot Integration Tests', () => {
   });
 
   test('pull_request.opened event: add_default_labels strategy not rolled out', async () => {
-    jest.spyOn(CIFlowBot.prototype, 'rollout').mockResolvedValue(false);
+    jest.spyOn(CIFlowBot.prototype, 'getUserLabels').mockResolvedValue([]);
 
     const event = require('./fixtures/pull_request.opened.json');
     event.payload.pull_request.number = pr_number;
