@@ -1,8 +1,31 @@
 import * as probot from 'probot';
 import minimist from 'minimist';
+import {CachedIssueTracker} from './utils';
 
 const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
+
+export function parseCIFlowIssue(rawText: string): object {
+  const rows = rawText.replace('\r', '').split('\n');
+  const retval = {};
+  // eslint-disable-next-line github/array-foreach
+  rows.forEach((row: string) => {
+    const elements = row.trim().split(' ');
+    if (
+      elements.length < 1 ||
+      elements[0].length < 1 ||
+      !elements[0].startsWith('@')
+    ) {
+      return;
+    }
+    if (elements.length === 1) {
+      retval[elements[0].substr(1)] = CIFlowBot.defaultLabels;
+    } else {
+      retval[elements[0].substr(1)] = elements.slice(1);
+    }
+  });
+  return retval;
+}
 
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
 // For more details about the design, please refer to the RFC: https://github.com/pytorch/pytorch/issues/61888
@@ -10,31 +33,20 @@ const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 export class CIFlowBot {
   // Constructor required
   readonly ctx: probot.Context;
+  readonly tracker: CachedIssueTracker;
 
   // Static readonly configurations
   static readonly command_ciflow = 'ciflow';
   static readonly command_ciflow_rerun = 'rerun';
   static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
-  static readonly allowed_repos = ['pytorch/pytorch'];
 
   static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
   static readonly pr_label_prefix = 'ciflow/';
-  static readonly rollout_users = [
-    'driazati',
-    'janeyx99',
-    'malfet',
-    'samestep',
-    'seemethere',
-    'walterddr',
-    'zhouzhuojie',
-    'suo',
-    'mruberry',
-    'ezyang'
-  ]; // slow rollout to specific group of users first
 
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
+  static readonly defaultLabels = ['ciflow/default'];
 
   // Stateful instance variables
   command = '';
@@ -45,6 +57,7 @@ export class CIFlowBot {
   comment_body = '';
   dispatch_labels: string[] = [];
   dispatch_strategies = [CIFlowBot.strategy_add_default_labels];
+  default_labels = CIFlowBot.defaultLabels;
   event = '';
   owner = '';
   pr_author = '';
@@ -52,8 +65,9 @@ export class CIFlowBot {
   pr_number = 0;
   repo = '';
 
-  constructor(ctx: probot.Context) {
+  constructor(ctx: probot.Context, tracker: CachedIssueTracker = null) {
     this.ctx = ctx;
+    this.tracker = tracker;
   }
 
   valid(): boolean {
@@ -95,18 +109,20 @@ export class CIFlowBot {
     return res?.data?.permission;
   }
 
-  rollout(): boolean {
-    if (CIFlowBot.rollout_users.includes(this.pr_author)) {
-      return true;
+  async getUserLabels(): Promise<string[]> {
+    const rolloutUsers =
+      this.tracker != null ? await this.tracker.loadIssue(this.ctx) : {};
+    if (this.pr_author in rolloutUsers) {
+      return rolloutUsers[this.pr_author];
     }
-    return false;
+    return [];
   }
 
   async dispatch(): Promise<void> {
     // Dispatch_strategies is like a pipeline of functions we can apply to
     // change `this.dispatch_labels`. We can add other dispatch algorithms
     // based on the ctx or user instructions.
-    // The future algorithms can manupulate the `this.dispatch_labels`, and
+    // The future algorithms can manipulate the `this.dispatch_labels`, and
     // individual workflows that can build up `if` conditions on the labels
     // can be found in `.github/workflows` of pytorch/pytorch repo.
     this.dispatch_strategies.map(this.dispatchStrategyFunc.bind(this));
@@ -133,11 +149,11 @@ export class CIFlowBot {
   dispatchStrategyFunc(strategyName: string): void {
     switch (strategyName) {
       case CIFlowBot.strategy_add_default_labels:
-        // strategy_add_default_labels: just make sure the we add a 'ciflow/default' to the existing set of pr_labels
+        // strategy_add_default_labels: just make sure the we add `default_labels` to the existing set of pr_labels
         if (this.dispatch_labels.length === 0) {
           this.dispatch_labels = this.pr_labels;
         }
-        this.dispatch_labels = ['ciflow/default', ...this.dispatch_labels];
+        this.dispatch_labels = this.default_labels.concat(this.dispatch_labels);
         break;
       default: {
         this.ctx.log.error({strategyName}, 'Unknown dispatch strategy');
@@ -275,9 +291,6 @@ export class CIFlowBot {
       ?.map(label => label.name);
     this.owner = this.ctx.payload?.repository?.owner?.login;
     this.repo = this.ctx.payload?.repository?.name;
-    if (!CIFlowBot.allowed_repos.includes(`${this.owner}/${this.repo}`)) {
-      return false;
-    }
 
     if (this.event === CIFlowBot.event_issue_comment) {
       this.comment_author = this.ctx.payload?.comment?.user?.login;
@@ -298,7 +311,7 @@ export class CIFlowBot {
 
   async handler(): Promise<void> {
     const isValid = await this.setContext();
-    const isRollout = this.rollout();
+    this.default_labels = await this.getUserLabels();
 
     this.ctx.log.info(
       {
@@ -314,21 +327,26 @@ export class CIFlowBot {
         pr_labels: this.pr_labels,
         pr_number: this.pr_number,
         repo: this.repo,
-        rollout: isRollout,
+        default_labels: this.default_labels,
         valid: isValid
       },
       'ciflow dispatch started!'
     );
 
-    if (!isValid || !isRollout) {
+    if (!isValid || this.default_labels.length === 0) {
       return;
     }
     await this.dispatch();
   }
 
   static main(app: probot.Application): void {
+    const tracker = new CachedIssueTracker(
+      app,
+      'ciflow_tracking_issue',
+      parseCIFlowIssue
+    );
     const webhookHandler = async (ctx: probot.Context): Promise<void> => {
-      await new CIFlowBot(ctx).handler();
+      await new CIFlowBot(ctx, tracker).handler();
     };
     app.on('pull_request.opened', webhookHandler);
     app.on('pull_request.reopened', webhookHandler);

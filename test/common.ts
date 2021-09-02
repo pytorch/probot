@@ -2,16 +2,13 @@ import nock from 'nock';
 
 export function nockTracker(
   contents: string,
-  ghaPath: string = 'ezyang/testing-ideal-computing-machine'
+  ghaPath: string = 'ezyang/testing-ideal-computing-machine',
+  configContent: string = 'tracking_issue: 6',
 ): void {
   // Setup mock for the "tracking issue" which specifies where
   // CC bot can get labels
   const configPayload = require('./fixtures/config.json');
-  configPayload['content'] = Buffer.from(
-    `
-tracking_issue: 6
-`
-  ).toString('base64');
+  configPayload['content'] = Buffer.from(configContent).toString('base64');
   nock('https://api.github.com')
     .get('/repos/' + ghaPath + '/contents/.github/pytorch-probot.yml')
     .reply(200, configPayload);

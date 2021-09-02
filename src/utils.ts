@@ -67,7 +67,7 @@ export class CachedIssueTracker extends CachedConfigTracker {
         );
         this.repoIssues[key] = this.issueParser('');
       }
-      context.log({issues: this.repoIssues[key]});
+      context.log({parsedIssue: this.repoIssues[key]});
     }
     return this.repoIssues[key];
   }
