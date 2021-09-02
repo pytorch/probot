@@ -6,7 +6,7 @@ const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 
 export function parseCIFlowIssue(rawText: string): object {
-  const rows = rawText.replace('\r','').split('\n');
+  const rows = rawText.replace('\r', '').split('\n');
   const retval = {};
   // eslint-disable-next-line github/array-foreach
   rows.forEach((row: string) => {
@@ -46,7 +46,7 @@ export class CIFlowBot {
   static readonly pr_label_prefix = 'ciflow/';
 
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
-  static readonly defaultLabels = [ 'ciflow/default'];
+  static readonly defaultLabels = ['ciflow/default'];
 
   // Stateful instance variables
   command = '';
@@ -109,8 +109,9 @@ export class CIFlowBot {
     return res?.data?.permission;
   }
 
-  async getUserLabels(): Promise<Array<string>> {
-    const rolloutUsers = this.tracker != null ? await this.tracker.loadIssue(this.ctx) : {};
+  async getUserLabels(): Promise<string[]> {
+    const rolloutUsers =
+      this.tracker != null ? await this.tracker.loadIssue(this.ctx) : {};
     if (this.pr_author in rolloutUsers) {
       return rolloutUsers[this.pr_author];
     }
@@ -338,7 +339,7 @@ export class CIFlowBot {
       'ciflow dispatch started!'
     );
 
-    if (!isValid || this.default_labels.length == 0) {
+    if (!isValid || this.default_labels.length === 0) {
       return;
     }
     await this.dispatch();
