@@ -1,8 +1,31 @@
 import * as probot from 'probot';
 import minimist from 'minimist';
+import {CachedIssueTracker} from './utils';
 
 const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
+
+function parseIssue(rawText: string): object {
+  const rows = rawText.split('\r\n');
+  const retval = {};
+  // eslint-disable-next-line github/array-foreach
+  rows.forEach((row: string) => {
+    const elements = row.split(' ');
+    if (
+      elements.length < 1 ||
+      elements[0].length < 1 ||
+      !elements[0].startsWith('@')
+    ) {
+      return;
+    }
+    if (elements.length === 1) {
+      retval[elements[0].substr(1)] = ['ciflow/default'];
+    } else {
+      retval[elements[0].substr(1)] = elements.slice(1);
+    }
+  });
+  return retval;
+}
 
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
 // For more details about the design, please refer to the RFC: https://github.com/pytorch/pytorch/issues/61888
@@ -10,29 +33,17 @@ const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 export class CIFlowBot {
   // Constructor required
   readonly ctx: probot.Context;
+  readonly tracker: CachedIssueTracker;
 
   // Static readonly configurations
   static readonly command_ciflow = 'ciflow';
   static readonly command_ciflow_rerun = 'rerun';
   static readonly allowed_commands: string[] = [CIFlowBot.command_ciflow];
-  static readonly allowed_repos = ['pytorch/pytorch'];
 
   static readonly bot_assignee = 'pytorchbot';
   static readonly event_issue_comment = 'issue_comment';
   static readonly event_pull_request = 'pull_request';
   static readonly pr_label_prefix = 'ciflow/';
-  static readonly rollout_users = [
-    'driazati',
-    'janeyx99',
-    'malfet',
-    'samestep',
-    'seemethere',
-    'walterddr',
-    'zhouzhuojie',
-    'suo',
-    'mruberry',
-    'ezyang'
-  ]; // slow rollout to specific group of users first
 
   static readonly strategy_add_default_labels = 'strategy_add_default_labels';
 
@@ -52,8 +63,9 @@ export class CIFlowBot {
   pr_number = 0;
   repo = '';
 
-  constructor(ctx: probot.Context) {
+  constructor(ctx: probot.Context, tracker: CachedIssueTracker = null) {
     this.ctx = ctx;
+    this.tracker = tracker;
   }
 
   valid(): boolean {
@@ -95,8 +107,12 @@ export class CIFlowBot {
     return res?.data?.permission;
   }
 
-  rollout(): boolean {
-    if (CIFlowBot.rollout_users.includes(this.pr_author)) {
+  async rollout(): Promise<boolean> {
+    if (this.tracker == null) {
+      return true;
+    }
+    const rolloutUsers = await this.tracker.loadIssue(this.ctx);
+    if (this.pr_author in rolloutUsers) {
       return true;
     }
     return false;
@@ -275,8 +291,11 @@ export class CIFlowBot {
       ?.map(label => label.name);
     this.owner = this.ctx.payload?.repository?.owner?.login;
     this.repo = this.ctx.payload?.repository?.name;
-    if (!CIFlowBot.allowed_repos.includes(`${this.owner}/${this.repo}`)) {
-      return false;
+    if (this.tracker) {
+      const issue = await this.tracker.loadIssue(this.ctx);
+      if (Object.getOwnPropertyNames(issue).length === 0) {
+        return false;
+      }
     }
 
     if (this.event === CIFlowBot.event_issue_comment) {
@@ -298,7 +317,7 @@ export class CIFlowBot {
 
   async handler(): Promise<void> {
     const isValid = await this.setContext();
-    const isRollout = this.rollout();
+    const isRollout = await this.rollout();
 
     this.ctx.log.info(
       {
@@ -327,8 +346,13 @@ export class CIFlowBot {
   }
 
   static main(app: probot.Application): void {
+    const tracker = new CachedIssueTracker(
+      app,
+      'ciflow_tracking_issue',
+      parseIssue
+    );
     const webhookHandler = async (ctx: probot.Context): Promise<void> => {
-      await new CIFlowBot(ctx).handler();
+      await new CIFlowBot(ctx, tracker).handler();
     };
     app.on('pull_request.opened', webhookHandler);
     app.on('pull_request.reopened', webhookHandler);

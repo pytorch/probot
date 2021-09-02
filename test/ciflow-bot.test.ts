@@ -2,6 +2,7 @@ import nock from 'nock';
 import * as probot from 'probot';
 import * as utils from './utils';
 import {CIFlowBot, Ruleset} from '../src/ciflow-bot';
+import {nockTracker} from './common';
 
 nock.disableNetConnect();
 jest.setTimeout(60000); // 60 seconds
@@ -152,7 +153,9 @@ describe('CIFlowBot Integration Tests', () => {
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
 
-    jest.spyOn(CIFlowBot.prototype, 'rollout').mockReturnValue(true);
+    nockTracker('@malfet', 'pytorch/pytorch', 'ciflow_tracking_issue: 6');
+
+    jest.spyOn(CIFlowBot.prototype, 'rollout').mockResolvedValue(true);
     jest.spyOn(Ruleset.prototype, 'upsertRootComment').mockReturnValue(null);
   });
 
@@ -192,7 +195,7 @@ describe('CIFlowBot Integration Tests', () => {
   });
 
   test('pull_request.opened event: add_default_labels strategy not rolled out', async () => {
-    jest.spyOn(CIFlowBot.prototype, 'rollout').mockReturnValue(false);
+    jest.spyOn(CIFlowBot.prototype, 'rollout').mockResolvedValue(false);
 
     const event = require('./fixtures/pull_request.opened.json');
     event.payload.pull_request.number = pr_number;
@@ -359,6 +362,7 @@ describe('Ruleset Integration Tests', () => {
     nock('https://api.github.com')
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
+    nockTracker('@octocat ciflow/none', 'pytorch/pytorch');
   });
 
   afterEach(() => {
