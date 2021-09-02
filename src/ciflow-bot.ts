@@ -291,12 +291,6 @@ export class CIFlowBot {
       ?.map(label => label.name);
     this.owner = this.ctx.payload?.repository?.owner?.login;
     this.repo = this.ctx.payload?.repository?.name;
-    if (this.tracker) {
-      const issue = await this.tracker.loadIssue(this.ctx);
-      if (Object.getOwnPropertyNames(issue).length === 0) {
-        return false;
-      }
-    }
 
     if (this.event === CIFlowBot.event_issue_comment) {
       this.comment_author = this.ctx.payload?.comment?.user?.login;
