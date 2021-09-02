@@ -5,12 +5,12 @@ import {CachedIssueTracker} from './utils';
 const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 
-function parseIssue(rawText: string): object {
-  const rows = rawText.split('\r\n');
+export function parseCIFlowIssue(rawText: string): object {
+  const rows = rawText.replace('\r','').split('\n');
   const retval = {};
   // eslint-disable-next-line github/array-foreach
   rows.forEach((row: string) => {
-    const elements = row.split(' ');
+    const elements = row.trim().split(' ');
     if (
       elements.length < 1 ||
       elements[0].length < 1 ||
@@ -348,7 +348,7 @@ export class CIFlowBot {
     const tracker = new CachedIssueTracker(
       app,
       'ciflow_tracking_issue',
-      parseIssue
+      parseCIFlowIssue
     );
     const webhookHandler = async (ctx: probot.Context): Promise<void> => {
       await new CIFlowBot(ctx, tracker).handler();
