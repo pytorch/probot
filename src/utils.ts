@@ -55,7 +55,7 @@ export class CachedIssueTracker extends CachedConfigTracker {
       context.log({key}, 'loadIssue');
       const config = await this.loadConfig(context);
       const subsPayload = await context.github.issues.get(
-        context.repo({number: config[this.configName]})
+        context.repo({issue_number: config[this.configName]})
       );
       const subsText = subsPayload.data['body'];
       context.log({subsText});
