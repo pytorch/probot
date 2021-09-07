@@ -31,7 +31,7 @@ function myBot(app: probot.Application): void {
       case 'critical':
         addLabel('triage review');
         break;
-      case 'topic: flaky-tests':
+      case 'module: flaky-tests':
         addLabel('high priority');
         addLabel('triage review');
         break;
