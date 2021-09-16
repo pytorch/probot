@@ -184,9 +184,13 @@ export class CIFlowBot {
 
   // signalGithub triggers a dispatch (if needed) as well as reacts to the comment
   async signalGithub(): Promise<void> {
-    if (this.event === CIFlowBot.event_pull_request &&
-        this.default_labels.length === CIFlowBot.defaultLabels.length &&
-          this.default_labels.every((val, idx) => val === CIFlowBot.defaultLabels[idx])) {
+    if (
+      this.event === CIFlowBot.event_pull_request &&
+      this.default_labels.length === CIFlowBot.defaultLabels.length &&
+      this.default_labels.every(
+        (val, idx) => val === CIFlowBot.defaultLabels[idx]
+      )
+    ) {
       this.ctx.log.info('skipping pull request dispatch for defaultLabel');
     } else {
       await this.triggerGHADispatch();
