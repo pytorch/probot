@@ -162,11 +162,11 @@ export class CIFlowBot {
     }
   }
 
-  // signalGithub sends a signal to GitHub to trigger the dispatch
+  // triggerGHADispatch sends a signal to GitHub to trigger the dispatch
   // The logic here is leverage some event that's rarely triggered by other users or bots,
   // thus we pick "assign/unassign" to begin with. See details from the CIFlow RFC:
   // https://github.com/pytorch/pytorch/issues/61888
-  async signalGithub(): Promise<void> {
+  async triggerGHADispatch(): Promise<void> {
     await this.ctx.github.issues.addAssignees({
       owner: this.owner,
       repo: this.repo,
@@ -180,6 +180,11 @@ export class CIFlowBot {
       issue_number: this.pr_number,
       assignees: [CIFlowBot.bot_assignee]
     });
+  }
+
+  // signalGithub triggers a dispatch (if needed) as well as reacts to the comment
+  async signalGithub(): Promise<void> {
+    await this.triggerGHADispatch();
 
     if (this.event === CIFlowBot.event_issue_comment) {
       await this.ctx.github.reactions.createForIssueComment({
