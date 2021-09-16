@@ -177,16 +177,6 @@ describe('CIFlowBot Integration Tests', () => {
         expect(body).toMatchObject(['ciflow/default']);
         return true;
       })
-      .reply(200)
-      .post(`/repos/${owner}/${repo}/issues/${pr_number}/assignees`, body => {
-        expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
-        return true;
-      })
-      .reply(200)
-      .delete(`/repos/${owner}/${repo}/issues/${pr_number}/assignees`, body => {
-        expect(body).toMatchObject({assignees: [CIFlowBot.bot_assignee]});
-        return true;
-      })
       .reply(200);
 
     await p.receive(event);
