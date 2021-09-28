@@ -191,7 +191,18 @@ export class CIFlowBot {
         (val, idx) => val === CIFlowBot.defaultLabels[idx]
       )
     ) {
-      this.ctx.log.info('skipping pull request dispatch for defaultLabel');
+      this.ctx.log.info(
+        {
+          dispatch_labels: this.dispatch_labels,
+          default_labels: this.default_labels,
+          event: this.event,
+          owner: this.owner,
+          pr_number: this.pr_number,
+          pr_labels: this.pr_labels,
+          repo: this.repo
+        },
+        'skipping pull request dispatch for defaultLabel'
+      );
     } else {
       await this.triggerGHADispatch();
     }
@@ -215,6 +226,24 @@ export class CIFlowBot {
   }
 
   async setLabels(): Promise<void> {
+    if (
+      this.event === CIFlowBot.event_pull_request &&
+      this.pr_labels.some(l => l.startsWith(CIFlowBot.pr_label_prefix))
+    ) {
+      this.ctx.log.info(
+        {
+          dispatch_labels: this.dispatch_labels,
+          default_labels: this.default_labels,
+          event: this.event,
+          owner: this.owner,
+          pr_number: this.pr_number,
+          pr_labels: this.pr_labels,
+          repo: this.repo
+        },
+        "do not set labels as it'll override users choice"
+      );
+      return;
+    }
     const labels = this.dispatch_labels.filter(label =>
       label.startsWith(CIFlowBot.pr_label_prefix)
     );
