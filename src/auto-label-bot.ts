@@ -1,11 +1,13 @@
 import * as probot from 'probot';
 
-const regex_to_label = new Map([
-  [/rocm/gi, 'module: rocm']
-]);
+const regexToLabel = new Map([[/rocm/gi, 'module: rocm']]);
 
 function myBot(app: probot.Application): void {
-  function addLabel(labelSet: Set<string>, newLabels: string[], l: string): void {
+  function addLabel(
+    labelSet: Set<string>,
+    newLabels: string[],
+    l: string
+  ): void {
     if (!labelSet.has(l)) {
       newLabels.push(l);
       labelSet.add(l);
@@ -20,7 +22,9 @@ function myBot(app: probot.Application): void {
     // time the issue is labeled).
 
     const label = context.payload['label']['name'];
-    const labels: string[] = context.payload['issue']['labels'].map(e => e['name']);
+    const labels: string[] = context.payload['issue']['labels'].map(
+      e => e['name']
+    );
     context.log({label, labels});
 
     const labelSet = new Set(labels);
@@ -46,34 +50,44 @@ function myBot(app: probot.Application): void {
     }
   });
 
-  async function addLabelsFromTitle(existingLabels: string[], title: string, context: any) {
+  async function addLabelsFromTitle(
+    existingLabels: string[],
+    title: string,
+    context
+  ): Promise<void> {
     const labelSet = new Set(existingLabels);
     const newLabels = [];
 
-    for (let [regex, label] of regex_to_label) {
+    for (const [regex, label] of regexToLabel) {
       if (title.match(regex).length) {
-        addLabel(labelSet, newLabels, label)
+        addLabel(labelSet, newLabels, label);
       }
     }
 
     if (newLabels.length) {
-      await context.github.issues.addLabels(context.issue({labels: ['module: rocm']}));
+      await context.github.issues.addLabels(
+        context.issue({labels: ['module: rocm']})
+      );
     }
   }
 
   app.on(['issues.opened', 'issues.edited'], async context => {
-    const labels: string[] = context.payload['issue']['labels'].map(e => e['name']);
-    const title = context.payload['issue']['title']
+    const labels: string[] = context.payload['issue']['labels'].map(
+      e => e['name']
+    );
+    const title = context.payload['issue']['title'];
     context.log({labels, title});
-    await addLabelsFromTitle(labels, title, context)
+    await addLabelsFromTitle(labels, title, context);
   });
 
   app.on(['pull_request.opened', 'pull_request.edited'], async context => {
-    const labels: string[] = context.payload['pull_request']['labels'].map(e => e['name']);
-    const title = context.payload['pull_request']['title']
+    const labels: string[] = context.payload['pull_request']['labels'].map(
+      e => e['name']
+    );
+    const title = context.payload['pull_request']['title'];
     context.log({labels, title});
 
-    await addLabelsFromTitle(labels, title, context)
+    await addLabelsFromTitle(labels, title, context);
   });
 }
 
