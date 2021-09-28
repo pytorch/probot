@@ -1,6 +1,17 @@
 import * as probot from 'probot';
 
+const regex_to_label = new Map([
+  [/rocm/gi, 'module: rocm']
+]);
+
 function myBot(app: probot.Application): void {
+  function addLabel(labelSet: Set<string>, newLabels: string[], l: string): void {
+    if (!labelSet.has(l)) {
+      newLabels.push(l);
+      labelSet.add(l);
+    }
+  }
+
   app.on('issues.labeled', async context => {
     // Careful!  For most labels, we only apply actions *when the issue
     // is added*; not if the issue is pre-existing (for example, high
@@ -9,18 +20,11 @@ function myBot(app: probot.Application): void {
     // time the issue is labeled).
 
     const label = context.payload['label']['name'];
-    const labels = context.payload['issue']['labels'].map(e => e['name']);
+    const labels: string[] = context.payload['issue']['labels'].map(e => e['name']);
     context.log({label, labels});
 
     const labelSet = new Set(labels);
-
     const newLabels = [];
-    function addLabel(l: string): void {
-      if (!labelSet.has(l)) {
-        newLabels.push(l);
-        labelSet.add(l);
-      }
-    }
 
     // NB: Added labels here will trigger more issues.labeled actions,
     // so be careful about accidentally adding a cycle.  With just label
@@ -29,17 +33,47 @@ function myBot(app: probot.Application): void {
     switch (label) {
       case 'high priority':
       case 'critical':
-        addLabel('triage review');
+        addLabel(labelSet, newLabels, 'triage review');
         break;
       case 'module: flaky-tests':
-        addLabel('high priority');
-        addLabel('triage review');
+        addLabel(labelSet, newLabels, 'high priority');
+        addLabel(labelSet, newLabels, 'triage review');
         break;
     }
 
     if (newLabels.length) {
       await context.github.issues.addLabels(context.issue({labels: newLabels}));
     }
+  });
+
+  async function addLabelsFromTitle(existingLabels: string[], title: string, context: any) {
+    const labelSet = new Set(existingLabels);
+    const newLabels = [];
+
+    for (let [regex, label] of regex_to_label) {
+      if (title.match(regex).length) {
+        addLabel(labelSet, newLabels, label)
+      }
+    }
+
+    if (newLabels.length) {
+      await context.github.issues.addLabels(context.issue({labels: ['module: rocm']}));
+    }
+  }
+
+  app.on(['issues.opened', 'issues.edited'], async context => {
+    const labels: string[] = context.payload['issue']['labels'].map(e => e['name']);
+    const title = context.payload['issue']['title']
+    context.log({labels, title});
+    await addLabelsFromTitle(labels, title, context)
+  });
+
+  app.on(['pull_request.opened', 'pull_request.edited'], async context => {
+    const labels: string[] = context.payload['pull_request']['labels'].map(e => e['name']);
+    const title = context.payload['pull_request']['title']
+    context.log({labels, title});
+
+    await addLabelsFromTitle(labels, title, context)
   });
 }
 
