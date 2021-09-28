@@ -187,6 +187,22 @@ describe('CIFlowBot Integration Tests', () => {
     scope.done();
   });
 
+  test('pull_request.opened event: do not override pre-existing labels', async () => {
+    const event = require('./fixtures/pull_request.opened.json');
+    event.payload.pull_request.number = pr_number;
+    event.payload.pull_request.labels = [{'name': 'ciflow/eeklo'}];
+    event.payload.repository.owner.login = owner;
+    event.payload.repository.name = repo;
+
+    const scope = nock('https://api.github.com')
+    await p.receive(event);
+
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
+  });
+
   test('pull_request.opened event: add_default_labels strategy not rolled out', async () => {
 
     const event = require('./fixtures/pull_request.opened.json');
