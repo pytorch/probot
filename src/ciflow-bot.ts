@@ -153,6 +153,12 @@ export class CIFlowBot {
         if (this.dispatch_labels.length === 0) {
           this.dispatch_labels = this.pr_labels;
         }
+
+        // respect author's ciflow labels before PR is made
+        if (this.hasLabelBeforePR()) {
+          break;
+        }
+
         this.dispatch_labels = this.default_labels.concat(this.dispatch_labels);
         break;
       default: {
@@ -225,11 +231,15 @@ export class CIFlowBot {
     ).upsertRootComment();
   }
 
-  async setLabels(): Promise<void> {
-    if (
+  hasLabelBeforePR(): boolean {
+    return (
       this.event === CIFlowBot.event_pull_request &&
       this.pr_labels.some(l => l.startsWith(CIFlowBot.pr_label_prefix))
-    ) {
+    );
+  }
+
+  async setLabels(): Promise<void> {
+    if (this.hasLabelBeforePR()) {
       this.ctx.log.info(
         {
           dispatch_labels: this.dispatch_labels,
