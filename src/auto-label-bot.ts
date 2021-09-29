@@ -65,9 +65,7 @@ function myBot(app: probot.Application): void {
     }
 
     if (newLabels.length) {
-      await context.github.issues.addLabels(
-        context.issue({labels: ['module: rocm']})
-      );
+      await context.github.issues.addLabels(context.issue({labels: newLabels}));
     }
   }
 
