@@ -155,7 +155,7 @@ export class CIFlowBot {
         }
 
         // respect author's ciflow labels before PR is made
-        if (this.hasLabelBeforePR()) {
+        if (this.hasLabelsBeforePR()) {
           break;
         }
 
@@ -231,7 +231,7 @@ export class CIFlowBot {
     ).upsertRootComment();
   }
 
-  hasLabelBeforePR(): boolean {
+  hasLabelsBeforePR(): boolean {
     return (
       this.event === CIFlowBot.event_pull_request &&
       this.pr_labels.some(l => l.startsWith(CIFlowBot.pr_label_prefix))
@@ -239,7 +239,7 @@ export class CIFlowBot {
   }
 
   async setLabels(): Promise<void> {
-    if (this.hasLabelBeforePR()) {
+    if (this.hasLabelsBeforePR()) {
       this.ctx.log.info(
         {
           dispatch_labels: this.dispatch_labels,
