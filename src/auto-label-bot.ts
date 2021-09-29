@@ -1,6 +1,6 @@
 import * as probot from 'probot';
 
-const regexToLabel : [RegExp, string][] = [[/rocm/gi, 'module: rocm']];
+const regexToLabel: [RegExp, string][] = [[/rocm/gi, 'module: rocm']];
 
 function myBot(app: probot.Application): void {
   function addLabel(
@@ -59,7 +59,7 @@ function myBot(app: probot.Application): void {
     const newLabels = [];
 
     for (const [regex, label] of regexToLabel) {
-      if (title.match(regex).length) {
+      if (title.match(regex)) {
         addLabel(labelSet, newLabels, label);
       }
     }
