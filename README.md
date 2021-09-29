@@ -26,6 +26,9 @@ CC people when labels are added to an issue.
   **triage review**
 * If an issue is labeled **topic: flaky-tests**, also label it
   **high priority** and **triage review**
+* If an issue or pull request contains a regex in its title, label
+  it accordingly, e.g., a title containing 'ROCm' would yield the
+  **module: rocm** label.
 
 ## trigger-circleci-workflows
 
