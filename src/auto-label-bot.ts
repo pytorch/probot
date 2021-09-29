@@ -1,6 +1,6 @@
 import * as probot from 'probot';
 
-const regexToLabel = new Map([[/rocm/gi, 'module: rocm']]);
+const regexToLabel : [RegExp, string][] = [[/rocm/gi, 'module: rocm']];
 
 function myBot(app: probot.Application): void {
   function addLabel(
