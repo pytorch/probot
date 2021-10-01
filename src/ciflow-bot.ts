@@ -6,31 +6,33 @@ const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 
 interface IUserConfig {
-  login: string;
   optOut: boolean;
   defaultLabels?: string[];
 }
 
 // parseCIFlowIssue parses the issue body for default labels and opt-out users
 export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
+  const [optIn, optOut] = ['@', '-@'];
   const rows = rawText.replace('\r', '').split('\n');
   const userConfigMap: Map<string, IUserConfig> = new Map();
   // eslint-disable-next-line github/array-foreach
   rows.forEach((row: string) => {
-    const elements = row.trim().split(' ');
+    const elements = row
+      .trim()
+      .replace(/^-\s*@/, '-@')
+      .split(' ');
     if (
       elements.length < 1 ||
       elements[0].length < 1 ||
-      !(elements[0].startsWith('@') || elements[0].startsWith('-@'))
+      !(elements[0].startsWith(optIn) || elements[0].startsWith(optOut))
     ) {
       return;
     }
 
     // opt-out users
-    if (elements[0].startsWith('-@')) {
+    if (elements[0].startsWith(optOut)) {
       const login = elements[0].substring(2);
       userConfigMap.set(login, {
-        login,
         optOut: true
       });
       return;
@@ -41,7 +43,6 @@ export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
     const defaultLabels =
       elements.length === 1 ? CIFlowBot.defaultLabels : elements.slice(1);
     userConfigMap.set(login, {
-      login,
       optOut: false,
       defaultLabels
     });

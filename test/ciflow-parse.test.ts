@@ -11,7 +11,6 @@ describe('Parse CIFflow issue', () => {
         [
           'malfet',
           {
-            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -32,7 +31,6 @@ describe('Parse CIFflow issue', () => {
         [
           'malfet',
           {
-            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -47,13 +45,13 @@ describe('Parse CIFflow issue', () => {
                             @malfet
                             @octocat cats
                             -@opt-out-user
+                            - @another-opt-out-user
                             `)
     ).toStrictEqual(
       new Map([
         [
           'malfet',
           {
-            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -61,7 +59,6 @@ describe('Parse CIFflow issue', () => {
         [
           'octocat',
           {
-            login: 'octocat',
             optOut: false,
             defaultLabels: ['cats']
           }
@@ -69,7 +66,12 @@ describe('Parse CIFflow issue', () => {
         [
           'opt-out-user',
           {
-            login: 'opt-out-user',
+            optOut: true,
+          }
+        ],
+        [
+          'another-opt-out-user',
+          {
             optOut: true,
           }
         ]
