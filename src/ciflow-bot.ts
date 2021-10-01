@@ -5,26 +5,48 @@ import {CachedIssueTracker} from './utils';
 const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 
-export function parseCIFlowIssue(rawText: string): object {
+interface IUserConfig {
+  githubHandler: string;
+  optOut: boolean;
+  defaultLabels?: string[];
+}
+
+// parseCIFlowIssue parses the issue body for default labels and opt-out users
+export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
   const rows = rawText.replace('\r', '').split('\n');
-  const retval = {};
+  const m: Map<string, IUserConfig> = new Map();
   // eslint-disable-next-line github/array-foreach
   rows.forEach((row: string) => {
     const elements = row.trim().split(' ');
     if (
       elements.length < 1 ||
       elements[0].length < 1 ||
-      !elements[0].startsWith('@')
+      !(elements[0].startsWith('@') || elements[0].startsWith('-@'))
     ) {
       return;
     }
-    if (elements.length === 1) {
-      retval[elements[0].substr(1)] = CIFlowBot.defaultLabels;
-    } else {
-      retval[elements[0].substr(1)] = elements.slice(1);
+
+    // opt-out users
+    if (elements[0].startsWith('-@')) {
+      const githubHandler = elements[0].substring(2);
+      m.set(githubHandler, {
+        githubHandler,
+        optOut: true
+      });
+      return;
     }
+
+    // users with custom labels
+    const githubHandler = elements[0].substring(1);
+    const defaultLabels =
+      elements.length === 1 ? CIFlowBot.defaultLabels : elements.slice(1);
+    m.set(githubHandler, {
+      githubHandler,
+      optOut: false,
+      defaultLabels
+    });
   });
-  return retval;
+  return m;
 }
 
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
@@ -110,12 +132,24 @@ export class CIFlowBot {
   }
 
   async getUserLabels(): Promise<string[]> {
-    const rolloutUsers =
-      this.tracker != null ? await this.tracker.loadIssue(this.ctx) : {};
-    if (this.pr_author in rolloutUsers) {
-      return rolloutUsers[this.pr_author];
+    const userConfigMap: Map<string, IUserConfig> =
+      this.tracker != null
+        ? ((await this.tracker.loadIssue(this.ctx)) as Map<string, IUserConfig>)
+        : new Map<string, IUserConfig>();
+
+    // rollout to everyone if no config is found
+    if (!userConfigMap.has(this.pr_author)) {
+      return CIFlowBot.defaultLabels;
     }
-    return [];
+
+    // respect opt-out users
+    if (userConfigMap.get(this.pr_author).optOut) {
+      return [];
+    }
+
+    return (
+      userConfigMap.get(this.pr_author).defaultLabels || CIFlowBot.defaultLabels
+    );
   }
 
   async dispatch(): Promise<void> {
