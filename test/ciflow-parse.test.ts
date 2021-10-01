@@ -11,7 +11,7 @@ describe('Parse CIFflow issue', () => {
         [
           'malfet',
           {
-            githubHandler: 'malfet',
+            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -32,7 +32,7 @@ describe('Parse CIFflow issue', () => {
         [
           'malfet',
           {
-            githubHandler: 'malfet',
+            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -53,7 +53,7 @@ describe('Parse CIFflow issue', () => {
         [
           'malfet',
           {
-            githubHandler: 'malfet',
+            login: 'malfet',
             optOut: false,
             defaultLabels: ['ciflow/default']
           }
@@ -61,7 +61,7 @@ describe('Parse CIFflow issue', () => {
         [
           'octocat',
           {
-            githubHandler: 'octocat',
+            login: 'octocat',
             optOut: false,
             defaultLabels: ['cats']
           }
@@ -69,7 +69,7 @@ describe('Parse CIFflow issue', () => {
         [
           'opt-out-user',
           {
-            githubHandler: 'opt-out-user',
+            login: 'opt-out-user',
             optOut: true,
           }
         ]

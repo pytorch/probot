@@ -6,7 +6,7 @@ const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
 
 interface IUserConfig {
-  githubHandler: string;
+  login: string;
   optOut: boolean;
   defaultLabels?: string[];
 }
@@ -14,7 +14,7 @@ interface IUserConfig {
 // parseCIFlowIssue parses the issue body for default labels and opt-out users
 export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
   const rows = rawText.replace('\r', '').split('\n');
-  const m: Map<string, IUserConfig> = new Map();
+  const userConfigMap: Map<string, IUserConfig> = new Map();
   // eslint-disable-next-line github/array-foreach
   rows.forEach((row: string) => {
     const elements = row.trim().split(' ');
@@ -28,25 +28,25 @@ export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
 
     // opt-out users
     if (elements[0].startsWith('-@')) {
-      const githubHandler = elements[0].substring(2);
-      m.set(githubHandler, {
-        githubHandler,
+      const login = elements[0].substring(2);
+      userConfigMap.set(login, {
+        login,
         optOut: true
       });
       return;
     }
 
     // users with custom labels
-    const githubHandler = elements[0].substring(1);
+    const login = elements[0].substring(1);
     const defaultLabels =
       elements.length === 1 ? CIFlowBot.defaultLabels : elements.slice(1);
-    m.set(githubHandler, {
-      githubHandler,
+    userConfigMap.set(login, {
+      login,
       optOut: false,
       defaultLabels
     });
   });
-  return m;
+  return userConfigMap;
 }
 
 // The CIFlowBot helps to dispatch labels and signal GitHub Action workflows to run.
