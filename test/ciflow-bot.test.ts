@@ -156,7 +156,8 @@ describe('CIFlowBot Integration Tests', () => {
 
     nockTracker(`
                 @zzj-bot
-                @octocat ciflow/default cats`,
+                @octocat ciflow/default cats
+                -@opt-out-users`,
                 'pytorch/pytorch', 'ciflow_tracking_issue: 6');
 
     jest.spyOn(Ruleset.prototype, 'upsertRootComment').mockReturnValue(null);
@@ -179,6 +180,44 @@ describe('CIFlowBot Integration Tests', () => {
       })
       .reply(200);
 
+    await p.receive(event);
+
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
+  });
+
+  test('pull_request.opened event: add_default_labels strategy for a_random_user', async () => {
+    const event = require('./fixtures/pull_request.opened.json');
+    event.payload.pull_request.number = pr_number;
+    event.payload.pull_request.user.login = 'a_random_user';
+    event.payload.repository.owner.login = owner;
+    event.payload.repository.name = repo;
+
+    const scope = nock('https://api.github.com')
+      .post(`/repos/${owner}/${repo}/issues/${pr_number}/labels`, body => {
+        expect(body).toMatchObject(['ciflow/default']);
+        return true;
+      })
+      .reply(200);
+
+    await p.receive(event);
+
+    if (!scope.isDone()) {
+      console.error('pending mocks: %j', scope.pendingMocks());
+    }
+    scope.done();
+  });
+
+  test('pull_request.opened event: respect opt-out users', async () => {
+    const event = require('./fixtures/pull_request.opened.json');
+    event.payload.pull_request.number = pr_number;
+    event.payload.pull_request.user.login = 'opt-out-users';
+    event.payload.repository.owner.login = owner;
+    event.payload.repository.name = repo;
+
+    const scope = nock('https://api.github.com')
     await p.receive(event);
 
     if (!scope.isDone()) {
