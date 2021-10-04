@@ -1,10 +1,7 @@
-import nock from 'nock';
 import {Probot} from 'probot';
 import * as utils from './utils';
 import myProbotApp from '../src/verify-disable-test-issue';
 import * as botUtils from '../src/verify-disable-test-issue';
-
-nock.disableNetConnect();
 
 describe('verify-disable-test-issue', () => {
   let probot: Probot;
@@ -41,7 +38,6 @@ describe('verify-disable-test-issue', () => {
     expect(testName).toEqual('testMethodName (testClass.TestSuite)');
 
     const comment = botUtils.formValidationComment(testName, platforms);
-
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(comment.includes('~15 minutes, testMethodName (testClass.TestSuite) will be disabled')).toBeTruthy();
     expect(comment.includes('these platforms: asan, rocm, windows.')).toBeTruthy();
@@ -76,7 +72,6 @@ describe('verify-disable-test-issue', () => {
     expect(testName).toEqual('testMethodName (testClass.TestSuite)');
 
     const comment = botUtils.formValidationComment(testName, platforms);
-
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(comment.includes('~15 minutes, testMethodName (testClass.TestSuite) will be disabled')).toBeTruthy();
     expect(comment.includes('all platforms.')).toBeTruthy();
@@ -111,8 +106,6 @@ describe('verify-disable-test-issue', () => {
     expect(testName).toEqual('testMethodName   cuz it borked');
 
     const comment = botUtils.formValidationComment(testName, platforms);
-    console.log(comment)
-
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(comment.includes('~15 minutes')).toBeFalsy();
     expect(comment.includes('ERROR')).toBeTruthy();

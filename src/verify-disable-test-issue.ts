@@ -88,32 +88,32 @@ export function formValidationComment(
   );
 
   let body =
-    '<details>Hello there! From the DISABLED prefix in this issue title, ';
+    '<body>Hello there! From the DISABLED prefix in this issue title, ';
   body += 'it looks like you are attempting to disable a test in PyTorch CI. ';
-  body += 'The information I have parsed is below:\n';
-  body += `<b>Test name<b>: ${testName}\n`;
-  body += `<b>Platforms for which to skip the test<b>: ${platformMsg}\n\n`;
+  body += 'The information I have parsed is below:\n\n';
+  body += `\* Test name: \`${testName}\`\n`;
+  body += `\* Platforms for which to skip the test: ${platformMsg}\n\n`;
 
   if (invalidPlatforms.length > 0) {
     body +=
-      '<b>WARNING!<b> In the parsing process, I received these invalid inputs as platforms for ';
+      '<b>WARNING!</b> In the parsing process, I received these invalid inputs as platforms for ';
     body += `which the test will be disabled: ${invalidPlatforms.join(
       ', '
     )}. These could `;
     body +=
       'be typos or platforms we do not yet support test disabling. Please ';
     body +=
-      'verify the platform list above and modify your issue body if needed.\n';
+      'verify the platform list above and modify your issue body if needed.\n\n';
   }
 
   if (!testNameIsExpected(testName)) {
     body +=
-      '<b>ERROR!<b> As you can see above, I could not properly parse the test ';
+      '<b>ERROR!</b> As you can see above, I could not properly parse the test ';
     body +=
       'information and determine which test to disable. Please modify the ';
     body +=
       'title to be of the format: DISABLED test_case_name (test.ClassName), ';
-    body += 'for example, test_cuda_assert_async (__main__.TestCuda).\n';
+    body += 'for example, \`test_cuda_assert_async (\_\_main\_\_.TestCuda)\`.\n\n';
   } else {
     body += `Within ~15 minutes, ${testName} will be disabled in PyTorch CI for `;
     body +=
@@ -121,18 +121,18 @@ export function formValidationComment(
         ? 'all platforms'
         : `these platforms: ${platformsToSkip.join(', ')}`;
     body +=
-      '. Please verify that your test name looks correct, e.g., test_cuda_assert_async (__main__.TestCuda).\n';
+      '. Please verify that your test name looks correct, e.g., \`test_cuda_assert_async (\_\_main\_\_.TestCuda)\`.\n\n';
   }
 
   body +=
     'To modify the platforms list, please include a line in the issue body, like below. The default ';
   body +=
-    'action will disable the test for all platforms if no platforms list is specified. \n\n';
+    'action will disable the test for all platforms if no platforms list is specified. \n';
   body +=
-    'Platforms: case-insensitive, list, of, platforms\n\nWe currently support the following platforms: ';
+    '\`\`\`\nPlatforms: case-insensitive, list, of, platforms\n\`\`\`\nWe currently support the following platforms: ';
   body += `${Array.from(supportedPlatforms)
     .sort((a, b) => a.localeCompare(b))
-    .join(', ')}.</details>`;
+    .join(', ')}.</body>`;
 
   return validationCommentStart + body + validationCommentEnd;
 }
