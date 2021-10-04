@@ -2,7 +2,7 @@
     "compilerOptions": {
         "outDir": "./dist",
         "allowJs": true,
-        "target": "ES2015",
+        "target": "es5",
         "esModuleInterop": true
     },
     "include": [
