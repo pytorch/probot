@@ -91,8 +91,8 @@ export function formValidationComment(
     '<body>Hello there! From the DISABLED prefix in this issue title, ';
   body += 'it looks like you are attempting to disable a test in PyTorch CI. ';
   body += 'The information I have parsed is below:\n\n';
-  body += `\* Test name: \`${testName}\`\n`;
-  body += `\* Platforms for which to skip the test: ${platformMsg}\n\n`;
+  body += `* Test name: \`${testName}\`\n`;
+  body += `* Platforms for which to skip the test: ${platformMsg}\n\n`;
 
   if (invalidPlatforms.length > 0) {
     body +=
@@ -113,7 +113,7 @@ export function formValidationComment(
       'information and determine which test to disable. Please modify the ';
     body +=
       'title to be of the format: DISABLED test_case_name (test.ClassName), ';
-    body += 'for example, \`test_cuda_assert_async (\_\_main\_\_.TestCuda)\`.\n\n';
+    body += 'for example, `test_cuda_assert_async (__main__.TestCuda)`.\n\n';
   } else {
     body += `Within ~15 minutes, ${testName} will be disabled in PyTorch CI for `;
     body +=
@@ -121,7 +121,7 @@ export function formValidationComment(
         ? 'all platforms'
         : `these platforms: ${platformsToSkip.join(', ')}`;
     body +=
-      '. Please verify that your test name looks correct, e.g., \`test_cuda_assert_async (\_\_main\_\_.TestCuda)\`.\n\n';
+      '. Please verify that your test name looks correct, e.g., `test_cuda_assert_async (__main__.TestCuda)`.\n\n';
   }
 
   body +=
@@ -129,7 +129,7 @@ export function formValidationComment(
   body +=
     'action will disable the test for all platforms if no platforms list is specified. \n';
   body +=
-    '\`\`\`\nPlatforms: case-insensitive, list, of, platforms\n\`\`\`\nWe currently support the following platforms: ';
+    '```\nPlatforms: case-insensitive, list, of, platforms\n```\nWe currently support the following platforms: ';
   body += `${Array.from(supportedPlatforms)
     .sort((a, b) => a.localeCompare(b))
     .join(', ')}.</body>`;
