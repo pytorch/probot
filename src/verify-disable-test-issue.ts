@@ -15,14 +15,14 @@ const supportedPlatforms = new Set([
 
 async function getValidationComment(
   context,
-  issueNumber: string,
+  issueNumber: number,
   owner: string,
   repo: string
 ): Promise<[number, string]> {
   const commentsRes = await context.github.issues.listComments({
     owner,
     repo,
-    issueNumber,
+    issue_number: issueNumber,
     per_page: 10
   });
   for (const comment of commentsRes.data) {
