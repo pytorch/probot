@@ -66,13 +66,13 @@ describe('Parse CIFflow issue', () => {
         [
           'opt-out-user',
           {
-            optOut: true,
+            optOut: true
           }
         ],
         [
           'another-opt-out-user',
           {
-            optOut: true,
+            optOut: true
           }
         ]
       ])

@@ -78,6 +78,7 @@ export class CIFlowBot {
   comment_author = '';
   comment_author_permission = '';
   comment_body = '';
+  confusing_command = false;
   dispatch_labels: string[] = [];
   dispatch_strategies = [CIFlowBot.strategy_add_default_labels];
   default_labels = CIFlowBot.defaultLabels;
@@ -154,6 +155,18 @@ export class CIFlowBot {
   }
 
   async dispatch(): Promise<void> {
+    if (this.confusing_command) {
+      await this.postReaction();
+      this.ctx.log.info(
+        {
+          event: this.event,
+          owner: this.owner,
+          command_args: this.command_args
+        },
+        'ciflow dispatch is confused!'
+      );
+      return;
+    }
     // Dispatch_strategies is like a pipeline of functions we can apply to
     // change `this.dispatch_labels`. We can add other dispatch algorithms
     // based on the ctx or user instructions.
@@ -223,6 +236,17 @@ export class CIFlowBot {
     });
   }
 
+  async postReaction(): Promise<void> {
+    if (this.event === CIFlowBot.event_issue_comment) {
+      await this.ctx.github.reactions.createForIssueComment({
+        comment_id: this.comment_id,
+        content: this.confusing_command ? 'confused' : '+1',
+        owner: this.owner,
+        repo: this.repo
+      });
+    }
+  }
+
   // signalGithub triggers a dispatch (if needed) as well as reacts to the comment
   async signalGithub(): Promise<void> {
     if (
@@ -248,14 +272,7 @@ export class CIFlowBot {
       await this.triggerGHADispatch();
     }
 
-    if (this.event === CIFlowBot.event_issue_comment) {
-      await this.ctx.github.reactions.createForIssueComment({
-        comment_id: this.comment_id,
-        content: '+1',
-        owner: this.owner,
-        repo: this.repo
-      });
-    }
+    await this.postReaction();
 
     await new Ruleset(
       this.ctx,
@@ -321,14 +338,37 @@ export class CIFlowBot {
         if (this.command_args._.length === 0) {
           return false;
         }
+        const commandArgsLength = Object.keys(this.command_args).length;
         const subCommand = this.command_args._[0];
         if (subCommand !== CIFlowBot.command_ciflow_rerun) {
           return false;
         }
-        if (typeof this.command_args.l === 'string') {
+        // `rerun` command is confusing if it has any other subcommand
+        if (this.command_args._.length !== 1) {
+          this.confusing_command = true;
+        }
+        const lType = typeof this.command_args.l;
+        // `rerun` does not accept any other options but "-l"
+        // So, mark command as confusing if it has any other arguments than l
+        if (lType === 'undefined') {
+          this.confusing_command =
+            this.confusing_command || commandArgsLength !== 1;
+          break;
+        }
+        this.confusing_command =
+          this.confusing_command || commandArgsLength !== 2;
+        if (lType !== 'object') {
+          // Arg can be string, integer or boolean
           this.command_args.l = [this.command_args.l];
         }
-        for (const label of this.command_args.l || []) {
+        for (const label of this.command_args.l) {
+          if (typeof label !== 'string') {
+            this.confusing_command = true;
+            continue;
+          }
+          if (!label.startsWith(CIFlowBot.pr_label_prefix)) {
+            this.confusing_command = true;
+          }
           this.dispatch_labels.push(label);
         }
         break;
@@ -417,6 +457,7 @@ export class CIFlowBot {
         pr_number: this.pr_number,
         repo: this.repo,
         default_labels: this.default_labels,
+        confusing_command: this.confusing_command,
         valid: isValid
       },
       'ciflow dispatch started!'
