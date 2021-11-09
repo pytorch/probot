@@ -71,13 +71,10 @@ describe('auto-label-bot', () => {
     payload['pull_request']['labels'] = [];
 
     const scope = nock('https://api.github.com')
-      .post(
-        '/repos/zhouzhuojie/gha-ci-playground/issues/31/labels',
-        body => {
-          expect(body).toMatchObject(['module: rocm']);
-          return true;
-        }
-      )
+      .post('/repos/zhouzhuojie/gha-ci-playground/issues/31/labels', body => {
+        expect(body).toMatchObject(['module: rocm']);
+        return true;
+      })
       .reply(200);
 
     await probot.receive({name: 'pull_request', payload: payload, id: '2'});

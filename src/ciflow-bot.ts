@@ -161,7 +161,7 @@ export class CIFlowBot {
         {
           event: this.event,
           owner: this.owner,
-          command_args: this.command_args,
+          command_args: this.command_args
         },
         'ciflow dispatch is confused!'
       );
@@ -236,7 +236,7 @@ export class CIFlowBot {
     });
   }
 
-  async postReaction() : Promise<void> {
+  async postReaction(): Promise<void> {
     if (this.event === CIFlowBot.event_issue_comment) {
       await this.ctx.github.reactions.createForIssueComment({
         comment_id: this.comment_id,
@@ -344,18 +344,20 @@ export class CIFlowBot {
           return false;
         }
         // `rerun` command is confusing if it has any other subcommand
-        if (this.command_args._.length != 1) {
+        if (this.command_args._.length !== 1) {
           this.confusing_command = true;
         }
-        const l_type = typeof this.command_args.l;
+        const lType = typeof this.command_args.l;
         // `rerun` does not accept any other options but "-l"
         // So, mark command as confusing if it has any other arguments than l
-        if (l_type === 'undefined') {
-          this.confusing_command = this.confusing_command || (commandArgsLength != 1);
+        if (lType === 'undefined') {
+          this.confusing_command =
+            this.confusing_command || commandArgsLength !== 1;
           break;
         }
-        this.confusing_command = this.confusing_command || (commandArgsLength != 2);
-        if (l_type !== 'object') {
+        this.confusing_command =
+          this.confusing_command || commandArgsLength !== 2;
+        if (lType !== 'object') {
           // Arg can be string, integer or boolean
           this.command_args.l = [this.command_args.l];
         }

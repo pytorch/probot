@@ -83,7 +83,7 @@ describe('CIFlowBot Unit Tests', () => {
     const invalidComments = [
       `invalid`,
       `@${CIFlowBot.bot_assignee}`, // without commands appended after the @assignee
-      `@${CIFlowBot.bot_assignee} ciflow`, // without subcommand rerun
+      `@${CIFlowBot.bot_assignee} ciflow` // without subcommand rerun
     ];
     test.each(invalidComments)(
       'invalid comment: %s',
@@ -171,11 +171,14 @@ describe('CIFlowBot Integration Tests', () => {
       .post('/app/installations/2/access_tokens')
       .reply(200, {token: 'test'});
 
-    nockTracker(`
+    nockTracker(
+      `
                 @zzj-bot
                 @octocat ciflow/default cats
                 -@opt-out-users`,
-                'pytorch/pytorch', 'ciflow_tracking_issue: 6');
+      'pytorch/pytorch',
+      'ciflow_tracking_issue: 6'
+    );
 
     jest.spyOn(Ruleset.prototype, 'upsertRootComment').mockReturnValue(null);
   });
@@ -234,7 +237,7 @@ describe('CIFlowBot Integration Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
 
-    const scope = nock('https://api.github.com')
+    const scope = nock('https://api.github.com');
     await p.receive(event);
 
     if (!scope.isDone()) {
@@ -246,11 +249,11 @@ describe('CIFlowBot Integration Tests', () => {
   test('pull_request.opened event: do not override pre-existing labels', async () => {
     const event = require('./fixtures/pull_request.opened.json');
     event.payload.pull_request.number = pr_number;
-    event.payload.pull_request.labels = [{'name': 'ciflow/eeklo'}];
+    event.payload.pull_request.labels = [{name: 'ciflow/eeklo'}];
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
 
-    const scope = nock('https://api.github.com')
+    const scope = nock('https://api.github.com');
     await p.receive(event);
 
     if (!scope.isDone()) {
@@ -260,7 +263,6 @@ describe('CIFlowBot Integration Tests', () => {
   });
 
   test('pull_request.opened event: add_default_labels strategy not rolled out', async () => {
-
     const event = require('./fixtures/pull_request.opened.json');
     event.payload.pull_request.user.login = 'rumpelstiltskin';
     event.payload.pull_request.number = pr_number;
