@@ -83,7 +83,7 @@ describe('CIFlowBot Unit Tests', () => {
     const invalidComments = [
       `invalid`,
       `@${CIFlowBot.bot_assignee}`, // without commands appended after the @assignee
-      `@${CIFlowBot.bot_assignee} ciflow` // without subcommand rerun
+      `@${CIFlowBot.bot_assignee} ciflow`, // without subcommand rerun
     ];
     test.each(invalidComments)(
       'invalid comment: %s',
@@ -92,6 +92,23 @@ describe('CIFlowBot Unit Tests', () => {
         const ciflow = new CIFlowBot(new probot.Context(event, null, null));
         const isValid = await ciflow.setContext();
         expect(isValid).toBe(false);
+      }
+    );
+    const confusingComments = [
+      `@${CIFlowBot.bot_assignee} ciflow rerun again`, // two subcommands
+      `@${CIFlowBot.bot_assignee} ciflow rerun -m foo`, // subcommand with invalid flag
+      `@${CIFlowBot.bot_assignee} ciflow rerun -l`, // rerun -l with no args
+      `@${CIFlowBot.bot_assignee} ciflow rerun -l 1`, // rerun -l with integer arg
+      `@${CIFlowBot.bot_assignee} ciflow rerun -l meow` // rerun -l with integer arg
+    ];
+    test.each(confusingComments)(
+      'confusing comment: %s',
+      async (confusingComment: string) => {
+        event.payload.comment.body = confusingComment;
+        const ciflow = new CIFlowBot(new probot.Context(event, null, null));
+        const isValid = await ciflow.setContext();
+        expect(isValid).toBe(true);
+        expect(ciflow.confusing_command).toBe(true);
       }
     );
   });
@@ -272,7 +289,6 @@ describe('CIFlowBot Integration Tests', () => {
 
     test.each([
       [`@${CIFlowBot.bot_assignee} ciflow rerun`, ['ciflow/default']],
-      [`@${CIFlowBot.bot_assignee} ciflow rerun -l`, ['ciflow/default']],
       [
         `@${CIFlowBot.bot_assignee} ciflow rerun -l ciflow/scheduled`,
         ['ciflow/default', 'ciflow/scheduled']
