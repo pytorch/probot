@@ -23,7 +23,7 @@ describe('verify-disable-test-issue', () => {
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(
       comment.includes(
-        '~15 minutes, testMethodName (testClass.TestSuite) will be disabled'
+        '~15 minutes, `testMethodName (testClass.TestSuite)` will be disabled'
       )
     ).toBeTruthy();
     expect(comment.includes('these platforms: win.')).toBeTruthy();
@@ -47,7 +47,7 @@ describe('verify-disable-test-issue', () => {
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(
       comment.includes(
-        '~15 minutes, testMethodName (testClass.TestSuite) will be disabled'
+        '~15 minutes, `testMethodName (testClass.TestSuite)` will be disabled'
       )
     ).toBeTruthy();
     expect(
@@ -70,7 +70,7 @@ describe('verify-disable-test-issue', () => {
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(
       comment.includes(
-        '~15 minutes, testMethodName (testClass.TestSuite) will be disabled'
+        '~15 minutes, `testMethodName (testClass.TestSuite)` will be disabled'
       )
     ).toBeTruthy();
     expect(comment.includes('all platforms.')).toBeTruthy();
@@ -91,7 +91,7 @@ describe('verify-disable-test-issue', () => {
     expect(comment.includes('<!-- validation-comment-start -->')).toBeTruthy();
     expect(
       comment.includes(
-        '~15 minutes, testMethodName (testClass.TestSuite) will be disabled'
+        '~15 minutes, `testMethodName (testClass.TestSuite)` will be disabled'
       )
     ).toBeTruthy();
     expect(comment.includes('all platforms.')).toBeTruthy();
