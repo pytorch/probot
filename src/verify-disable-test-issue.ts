@@ -115,7 +115,7 @@ export function formValidationComment(
       'title to be of the format: DISABLED test_case_name (test.ClassName), ';
     body += 'for example, `test_cuda_assert_async (__main__.TestCuda)`.\n\n';
   } else {
-    body += `Within ~15 minutes, ${testName} will be disabled in PyTorch CI for `;
+    body += `Within ~15 minutes, \`${testName}\` will be disabled in PyTorch CI for `;
     body +=
       platformsToSkip.length === 0
         ? 'all platforms'
