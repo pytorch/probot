@@ -1,6 +1,6 @@
 import * as probot from 'probot';
 import minimist from 'minimist';
-import {CachedIssueTracker} from './utils';
+import { CachedIssueTracker } from './utils';
 
 const ciflowCommentStart = '<!-- ciflow-comment-start -->';
 const ciflowCommentEnd = '<!-- ciflow-comment-end -->';
@@ -99,7 +99,7 @@ export class CIFlowBot {
       this.event !== CIFlowBot.event_pull_request &&
       this.event !== CIFlowBot.event_issue_comment
     ) {
-      this.ctx.log.error({ctx: this.ctx}, 'Unknown webhook event');
+      this.ctx.log.error({ ctx: this.ctx }, 'Unknown webhook event');
       return false;
     }
 
@@ -210,7 +210,7 @@ export class CIFlowBot {
         this.dispatch_labels = this.default_labels.concat(this.dispatch_labels);
         break;
       default: {
-        this.ctx.log.error({strategyName}, 'Unknown dispatch strategy');
+        this.ctx.log.error({ strategyName }, 'Unknown dispatch strategy');
         break;
       }
     }
@@ -290,6 +290,14 @@ export class CIFlowBot {
     );
   }
 
+  isRerunCommand(): boolean {
+    return (
+      this.event === CIFlowBot.event_issue_comment &&
+      this.command_args.length > 0 &&
+      this.command_args._[0] === CIFlowBot.command_ciflow_rerun
+    );
+  }
+
   async setLabels(): Promise<void> {
     if (this.hasLabelsBeforePR()) {
       this.ctx.log.info(
@@ -303,6 +311,22 @@ export class CIFlowBot {
           repo: this.repo
         },
         "do not set labels as it'll override users choice"
+      );
+      return;
+    }
+
+    if (this.isRerunCommand()) {
+      this.ctx.log.info(
+        {
+          dispatch_labels: this.dispatch_labels,
+          default_labels: this.default_labels,
+          event: this.event,
+          owner: this.owner,
+          pr_number: this.pr_number,
+          pr_labels: this.pr_labels,
+          repo: this.repo
+        },
+        'CI Bot should not add labels for rerun commands.'
       );
       return;
     }
@@ -488,7 +512,7 @@ export class CIFlowBot {
 
 interface IRulesetJson {
   version: string;
-  label_rules: {[key: string]: string[]};
+  label_rules: { [key: string]: string[] };
 }
 
 // Ruleset is a class that represents the configuration of ciflow rules
@@ -505,7 +529,7 @@ export class Ruleset {
     readonly repo: string,
     readonly pr_number: number,
     readonly labels: string[]
-  ) {}
+  ) { }
 
   async fetchRulesetJson(): Promise<IRulesetJson | null> {
     const prRes = await this.ctx.github.pulls.get({
@@ -624,7 +648,7 @@ For more information, please take a look at the [CI Flow Wiki](https://github.co
     const ruleset = await this.fetchRulesetJson();
     if (!ruleset) {
       this.ctx.log.error(
-        {pr_number: this.pr_number},
+        { pr_number: this.pr_number },
         'failed to fetchRulesetJson'
       );
       return;
