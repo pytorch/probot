@@ -323,6 +323,7 @@ export class CIFlowBot {
       this.logSkipLabels('Do not set labels for rerun comments.');
       return;
     }
+
     const labels = this.dispatch_labels.filter(label =>
       label.startsWith(CIFlowBot.pr_label_prefix)
     );
