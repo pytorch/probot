@@ -1,6 +1,6 @@
 import * as probot from 'probot';
 
-const regexToLabel: [RegExp, string][] = [[/rocm/gi, 'module: rocm']];
+const regexToLabel: [RegExp, string][] = [[/rocm/gi, 'module: rocm'], [/DISABLED\s+test.*\(.*\)/g, 'skipped']];
 
 function myBot(app: probot.Application): void {
   function addLabel(

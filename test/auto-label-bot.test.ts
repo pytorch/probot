@@ -81,4 +81,49 @@ describe('auto-label-bot', () => {
 
     scope.done();
   });
+
+  test('add skipped label when issue title contains DISABLED test', async () => {
+    nock('https://api.github.com')
+      .post('/app/installations/2/access_tokens')
+      .reply(200, {token: 'test'});
+
+    const payload = require('./fixtures/issues.opened');
+    payload['issue']['title'] = 'DISABLED  test_blah (__main__.TestClass)';
+    payload['issue']['labels'] = [];
+
+    const scope = nock('https://api.github.com')
+      .post(
+        '/repos/ezyang/testing-ideal-computing-machine/issues/5/labels',
+        body => {
+          expect(body).toMatchObject(['skipped']);
+          return true;
+        }
+      )
+      .reply(200);
+
+    await probot.receive({name: 'issues', payload: payload, id: '2'});
+
+    scope.done();
+  });
+
+  test('add skipped label when PR title contains DISABLED test', async () => {
+    nock('https://api.github.com')
+      .post('/app/installations/2/access_tokens')
+      .reply(200, {token: 'test'});
+
+    const payload = require('./fixtures/pull_request.opened')['payload'];
+    payload['pull_request']['title'] = 'DISABLED test_blah (__main__.TestClass)';
+    payload['pull_request']['labels'] = [];
+
+    const scope = nock('https://api.github.com')
+      .post('/repos/zhouzhuojie/gha-ci-playground/issues/31/labels', body => {
+        expect(body).toMatchObject(['skipped']);
+        return true;
+      })
+      .reply(200);
+
+    await probot.receive({name: 'pull_request', payload: payload, id: '2'});
+
+    scope.done();
+  });
 });
