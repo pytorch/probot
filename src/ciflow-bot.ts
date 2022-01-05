@@ -290,22 +290,43 @@ export class CIFlowBot {
     );
   }
 
+  isRerunCommand(): boolean {
+    return (
+      this.event === CIFlowBot.event_issue_comment &&
+      this.command_args.length > 0 &&
+      this.command_args._[0] === CIFlowBot.command_ciflow_rerun &&
+      typeof this.command_args.l !== undefined
+    );
+  }
+
+  logSkipLabels(message: string): void {
+    this.ctx.log.info(
+      {
+        dispatch_labels: this.dispatch_labels,
+        default_labels: this.default_labels,
+        event: this.event,
+        owner: this.owner,
+        pr_number: this.pr_number,
+        pr_labels: this.pr_labels,
+        repo: this.repo
+      },
+      message
+    );
+  }
+
   async setLabels(): Promise<void> {
     if (this.hasLabelsBeforePR()) {
-      this.ctx.log.info(
-        {
-          dispatch_labels: this.dispatch_labels,
-          default_labels: this.default_labels,
-          event: this.event,
-          owner: this.owner,
-          pr_number: this.pr_number,
-          pr_labels: this.pr_labels,
-          repo: this.repo
-        },
-        "do not set labels as it'll override users choice"
+      this.logSkipLabels("do not set labels as it'll override users choice.");
+      return;
+    }
+
+    if (this.isRerunCommand()) {
+      this.logSkipLabels(
+        'Do not set labels for rerun comments without -l option.'
       );
       return;
     }
+
     const labels = this.dispatch_labels.filter(label =>
       label.startsWith(CIFlowBot.pr_label_prefix)
     );
