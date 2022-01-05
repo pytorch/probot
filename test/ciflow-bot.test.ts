@@ -56,6 +56,7 @@ describe('CIFlowBot Unit Tests', () => {
 
     const validComments = [
       `@${CIFlowBot.bot_assignee} ciflow rerun`,
+      `@${CIFlowBot.bot_assignee} ciflow rerun `,
       `   @${CIFlowBot.bot_assignee} ciflow rerun`,
       `   @${CIFlowBot.bot_assignee}     ciflow rerun`,
       `   @${CIFlowBot.bot_assignee}     ciflow   rerun`,
@@ -77,6 +78,7 @@ describe('CIFlowBot Unit Tests', () => {
         const ciflow = new CIFlowBot(new probot.Context(event, null, null));
         const isValid = await ciflow.setContext();
         expect(isValid).toBe(true);
+        expect(ciflow.confusing_command).toBe(false);
       }
     );
 

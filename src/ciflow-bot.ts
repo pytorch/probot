@@ -424,7 +424,7 @@ export class CIFlowBot {
       this.command = found[1];
     }
     if (found.length === 3) {
-      this.command_args = minimist(found[2].split(/\s+/));
+      this.command_args = minimist(found[2].trim().split(/\s+/));
     }
 
     return this.parseCommandArgs();
