@@ -112,7 +112,8 @@ describe('auto-label-bot', () => {
       .reply(200, {token: 'test'});
 
     const payload = require('./fixtures/pull_request.opened')['payload'];
-    payload['pull_request']['title'] = 'DISABLED test_blah (__main__.TestClass)';
+    payload['pull_request']['title'] =
+      'DISABLED test_blah (__main__.TestClass)';
     payload['pull_request']['labels'] = [];
 
     const scope = nock('https://api.github.com')
