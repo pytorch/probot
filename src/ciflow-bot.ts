@@ -294,8 +294,7 @@ export class CIFlowBot {
     return (
       this.event === CIFlowBot.event_issue_comment &&
       this.command_args.length > 0 &&
-      this.command_args._[0] === CIFlowBot.command_ciflow_rerun &&
-      typeof this.command_args.l !== undefined
+      this.command_args._[0] === CIFlowBot.command_ciflow_rerun
     );
   }
 
@@ -320,7 +319,7 @@ export class CIFlowBot {
       return;
     }
 
-    if (this.isRerunCommand()) {
+    if (this.isRerunCommand() && typeof this.command_args.l === undefined) {
       this.logSkipLabels(
         'Do not set labels for rerun comments without -l option.'
       );
