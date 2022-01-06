@@ -28,7 +28,7 @@
     "@types/minimist": "^1.2.2",
     "@types/source-map-support": "^0.5.4",
     "axios": "^0.21.2",
-    "probot": "^9",
+    "probot": "^12",
     "probot-actions-adapter": "^1.0.2",
     "source-map-support": "^0.5.19"
   },

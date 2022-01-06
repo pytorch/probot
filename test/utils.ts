@@ -1,12 +1,17 @@
 // @format
 import nock from 'nock';
-import {Probot} from 'probot';
+import {Probot, ProbotOctokit} from 'probot';
 
 export function testProbot(): Probot {
   return new Probot({
-    id: 1,
-    cert: 'test',
-    githubToken: 'test'
+    appId: 1,
+    privateKey: 'test',
+    githubToken: 'test',
+    // Disable throttling & retrying requests for easier testing
+    Octokit: ProbotOctokit.defaults({
+      retry: {enabled: false},
+      throttle: {enabled: false}
+    })
   });
 }
 
@@ -20,8 +25,10 @@ export function mockConfig(
   configPayload['name'] = fileName;
   configPayload['path'] = `.github/${fileName}`;
   nock('https://api.github.com')
-    .get(`/repos/${repoKey}/contents/.github/${fileName}`)
-    .reply(200, configPayload);
+    .get(
+      `/repos/${repoKey}/contents/${encodeURIComponent(`.github/${fileName}`)}`
+    )
+    .reply(200, content);
 }
 
 export function mockAccessToken(): void {
