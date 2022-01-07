@@ -8,7 +8,7 @@ function labelToTag(label: string, prNum: number): string {
   return `${label}/${prNum}`;
 }
 
-function getAllPRTags(context: Context<'pull_request'>) {
+function getAllPRTags(context: Context<'pull_request'>): string[] {
   const prNum = context.payload.pull_request.number;
   const labels = context.payload.pull_request.labels
     .map(label => label.name)
@@ -27,7 +27,7 @@ async function syncTag(
   context: Context<'pull_request'>,
   tag: string,
   headSha: string
-) {
+): Promise<void> {
   context.log.info(`Synchronizing tag ${tag} to head sha ${headSha}`);
   const matchingTags = await context.octokit.git.listMatchingRefs(
     context.repo({ref: `tags/${tag}`})
@@ -59,7 +59,7 @@ async function syncTag(
  * Remove a tag from the repo if necessary.
  * @param tag  looks like "ciflow/trunk/12345", where 12345 is the PR number.
  */
-async function rmTag(context: Context, tag: string) {
+async function rmTag(context: Context, tag: string): Promise<void> {
   context.log.info(`Cleaning up tag ${tag}`);
   const matchingTags = await context.octokit.git.listMatchingRefs(
     context.repo({ref: `tags/${tag}`})
@@ -78,7 +78,9 @@ async function rmTag(context: Context, tag: string) {
  * We check all the CIFlow labels on the PR and make sure the corresponding tags
  * are pointing to the PR's head SHA.
  */
-async function handleSyncEvent(context: Context<'pull_request'>) {
+async function handleSyncEvent(
+  context: Context<'pull_request'>
+): Promise<void> {
   context.log.debug(context, 'START Processing sync event');
 
   const author = context.payload.pull_request.user.login;
@@ -89,7 +91,7 @@ async function handleSyncEvent(context: Context<'pull_request'>) {
 
   const headSha = context.payload.pull_request.head.sha;
   const tags = getAllPRTags(context);
-  const promises = tags.map(tag => syncTag(context, tag, headSha));
+  const promises = tags.map(async tag => await syncTag(context, tag, headSha));
   await Promise.all(promises);
   context.log.info('END Processing sync event');
 }
@@ -97,7 +99,7 @@ async function handleSyncEvent(context: Context<'pull_request'>) {
 // Remove the tag corresponding to the removed label.
 async function handleUnlabeledEvent(
   context: Context<'pull_request.unlabeled'>
-) {
+): Promise<void> {
   context.log.debug(context, 'START Processing unlabeled event');
 
   const author = context.payload.pull_request.user.login;
@@ -112,12 +114,14 @@ async function handleUnlabeledEvent(
   }
   const prNum = context.payload.pull_request.number;
   const tag = labelToTag(context.payload.label.name, prNum);
-  // @ts-ignore
+  // @ts-expect-error complex union type because of context generic
   await rmTag(context, tag);
 }
 
 // Remove all tags as this PR is closed.
-async function handleClosedEvent(context: Context<'pull_request.closed'>) {
+async function handleClosedEvent(
+  context: Context<'pull_request.closed'>
+): Promise<void> {
   context.log.debug(context, 'START Processing rm event');
 
   const author = context.payload.pull_request.user.login;
@@ -127,12 +131,14 @@ async function handleClosedEvent(context: Context<'pull_request.closed'>) {
   }
 
   const tags = getAllPRTags(context);
-  const promises = tags.map(tag => rmTag(context, tag));
+  const promises = tags.map(async tag => await rmTag(context, tag));
   await Promise.all(promises);
 }
 
 // Add the tag corresponding to the new label.
-async function handleLabelEvent(context: Context<'pull_request.labeled'>) {
+async function handleLabelEvent(
+  context: Context<'pull_request.labeled'>
+): Promise<void> {
   context.log.debug(context, 'START Processing label event');
 
   const author = context.payload.pull_request.user.login;
@@ -150,7 +156,7 @@ async function handleLabelEvent(context: Context<'pull_request.labeled'>) {
   await syncTag(context, tag, context.payload.pull_request.head.sha);
 }
 
-function pushTrigger(app: Probot) {
+function pushTrigger(app: Probot): void {
   app.on('pull_request.labeled', async context => handleLabelEvent(context));
   app.on(
     [
