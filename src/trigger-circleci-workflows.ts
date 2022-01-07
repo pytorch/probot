@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as probot from 'probot';
+import {Probot, Context} from 'probot';
 import * as utils from './utils';
 
 interface Params {
@@ -28,12 +28,12 @@ export const circleAPIUrl = 'https://circleci.com';
 const circleToken = process.env.CIRCLE_TOKEN;
 const repoMap = new Map<string, Config | {}>();
 
-async function loadConfig(context: probot.Context): Promise<Config | {}> {
+async function loadConfig(context: Context): Promise<Config | {}> {
   const repoKey = utils.repoKey(context);
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
     context.log.info({repoKey}, 'loadConfig');
-    configObj = (await context.config(configName)) as Config | {};
+    configObj = await context.config(configName);
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
     }
@@ -44,7 +44,7 @@ async function loadConfig(context: probot.Context): Promise<Config | {}> {
 }
 
 function isValidConfig(
-  context: probot.Context,
+  context: Context,
   config: Config | {}
 ): config is Config {
   if (Object.keys(config).length === 0 || !config['labels_to_circle_params']) {
@@ -60,7 +60,7 @@ function stripReference(reference: string): string {
   return reference.replace(/refs\/(heads|tags)\//, '');
 }
 
-async function getAppliedLabels(context: probot.Context): Promise<string[]> {
+async function getAppliedLabels(context: Context): Promise<string[]> {
   const appliedLabels = new Array<string>();
   // Check if we already have the applied labels in our context payload
   if (context.payload['pull_request']['labels']) {
@@ -72,10 +72,7 @@ async function getAppliedLabels(context: probot.Context): Promise<string[]> {
   return appliedLabels;
 }
 
-async function triggerCircleCI(
-  context: probot.Context,
-  data: object
-): Promise<void> {
+async function triggerCircleCI(context: Context, data: object): Promise<void> {
   const repoKey = utils.repoKey(context);
   context.log.info({repoKey, data}, 'triggerCircleCI');
   const resp = await axios.post(
@@ -112,7 +109,7 @@ function invert(label: string): string {
 
 export function genCircleParametersForPR(
   config: Config,
-  context: probot.Context,
+  context: Context,
   appliedLabels: string[]
 ): Params {
   context.log.info({config, appliedLabels}, 'genParametersForPR');
@@ -154,10 +151,7 @@ export function genCircleParametersForPR(
   return parameters;
 }
 
-function genCircleParametersForPush(
-  config: Config,
-  context: probot.Context
-): Params {
+function genCircleParametersForPush(config: Config, context: Context): Params {
   const {
     default_params: parameters = {},
     labels_to_circle_params: labelsToParams
@@ -207,7 +201,7 @@ function genCircleParametersForPush(
   return parameters;
 }
 
-async function runBotForPR(context: probot.Context): Promise<void> {
+async function runBotForPR(context: Context): Promise<void> {
   try {
     let triggerBranch = context.payload['pull_request']['head']['ref'];
     if (context.payload['pull_request']['head']['repo']['fork']) {
@@ -236,7 +230,7 @@ async function runBotForPR(context: probot.Context): Promise<void> {
   }
 }
 
-async function runBotForPush(context: probot.Context): Promise<void> {
+async function runBotForPush(context: Context): Promise<void> {
   try {
     const rawRef = context.payload['ref'];
     const onTag: boolean = rawRef.startsWith('refs/tags');
@@ -260,7 +254,7 @@ async function runBotForPush(context: probot.Context): Promise<void> {
   }
 }
 
-export function myBot(app: probot.Application): void {
+export function myBot(app: Probot): void {
   app.on('pull_request.labeled', runBotForPR);
   app.on('pull_request.synchronize', runBotForPR);
   app.on('push', runBotForPush);

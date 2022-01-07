@@ -16,13 +16,19 @@ describe('auto-cc-bot', () => {
   test('no-op when tracker is missing', async () => {
     nock('https://api.github.com')
       .get(
-        '/repos/ezyang/testing-ideal-computing-machine/contents/.github/pytorch-probot.yml'
+        `/repos/ezyang/testing-ideal-computing-machine/contents/${encodeURIComponent(
+          '.github/pytorch-probot.yml'
+        )}`
       )
       .reply(404, {message: 'There is nothing here'});
 
     // Not sure why, but ProBot will look here if config is missing in the actual repo
     nock('https://api.github.com')
-      .get('/repos/ezyang/.github/contents/.github/pytorch-probot.yml')
+      .get(
+        `/repos/ezyang/.github/contents/${encodeURIComponent(
+          '.github/pytorch-probot.yml'
+        )}`
+      )
       .reply(404, {message: 'There is nothing here'});
 
     const payload = require('./fixtures/issues.labeled'); // testlabel
@@ -108,8 +114,9 @@ Some header text
     payload['pull_request']['body'] = 'Arf arf';
 
     const scope = nock('https://api.github.com')
-      .patch('/repos/seemethere/test-repo/pulls/20', (body: any) => {
+      .patch('/repos/seemethere/test-repo/pulls/', (body: any) => {
         expect(body).toMatchObject({
+          issue_number: 20,
           body: 'Arf arf\n\ncc @ezyang'
         });
         return true;

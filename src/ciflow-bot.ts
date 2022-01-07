@@ -1,4 +1,4 @@
-import * as probot from 'probot';
+import {Context, Probot} from 'probot';
 import minimist from 'minimist';
 import {CachedIssueTracker} from './utils';
 
@@ -55,7 +55,7 @@ export function parseCIFlowIssue(rawText: string): Map<string, IUserConfig> {
 // Currently it supports strong validation and slow rollout, and it runs through a pipeline of dispatch strategies.
 export class CIFlowBot {
   // Constructor required
-  readonly ctx: probot.Context;
+  readonly ctx: Context;
   readonly tracker: CachedIssueTracker;
 
   // Static readonly configurations
@@ -89,7 +89,7 @@ export class CIFlowBot {
   pr_number = 0;
   repo = '';
 
-  constructor(ctx: probot.Context, tracker: CachedIssueTracker = null) {
+  constructor(ctx: Context, tracker: CachedIssueTracker = null) {
     this.ctx = ctx;
     this.tracker = tracker;
   }
@@ -125,11 +125,11 @@ export class CIFlowBot {
   }
 
   async getUserPermission(username: string): Promise<string> {
-    const res = await this.ctx.github.repos.getCollaboratorPermissionLevel({
-      owner: this.owner,
-      repo: this.repo,
-      username
-    });
+    const res = await this.ctx.octokit.repos.getCollaboratorPermissionLevel(
+      this.ctx.repo({
+        username
+      })
+    );
     return res?.data?.permission;
   }
 
@@ -221,29 +221,29 @@ export class CIFlowBot {
   // thus we pick "assign/unassign" to begin with. See details from the CIFlow RFC:
   // https://github.com/pytorch/pytorch/issues/61888
   async triggerGHADispatch(): Promise<void> {
-    await this.ctx.github.issues.addAssignees({
-      owner: this.owner,
-      repo: this.repo,
-      issue_number: this.pr_number,
-      assignees: [CIFlowBot.bot_assignee]
-    });
+    await this.ctx.octokit.issues.addAssignees(
+      this.ctx.repo({
+        issue_number: this.pr_number,
+        assignees: [CIFlowBot.bot_assignee]
+      })
+    );
 
-    await this.ctx.github.issues.removeAssignees({
-      owner: this.owner,
-      repo: this.repo,
-      issue_number: this.pr_number,
-      assignees: [CIFlowBot.bot_assignee]
-    });
+    await this.ctx.octokit.issues.removeAssignees(
+      this.ctx.repo({
+        issue_number: this.pr_number,
+        assignees: [CIFlowBot.bot_assignee]
+      })
+    );
   }
 
   async postReaction(): Promise<void> {
     if (this.event === CIFlowBot.event_issue_comment) {
-      await this.ctx.github.reactions.createForIssueComment({
-        comment_id: this.comment_id,
-        content: this.confusing_command ? 'confused' : '+1',
-        owner: this.owner,
-        repo: this.repo
-      });
+      await this.ctx.octokit.reactions.createForIssueComment(
+        this.ctx.repo({
+          comment_id: this.comment_id,
+          content: this.confusing_command ? 'confused' : '+1'
+        })
+      );
     }
   }
 
@@ -332,22 +332,22 @@ export class CIFlowBot {
     const labelsToDelete = this.pr_labels.filter(l => !labels.includes(l));
     const labelsToAdd = labels.filter(l => !this.pr_labels.includes(l));
     for (const label of labelsToDelete) {
-      await this.ctx.github.issues.removeLabel({
-        owner: this.ctx.payload.repository.owner.login,
-        repo: this.ctx.payload.repository.name,
-        issue_number: this.pr_number,
-        name: label
-      });
+      await this.ctx.octokit.issues.removeLabel(
+        this.ctx.repo({
+          issue_number: this.pr_number,
+          name: label
+        })
+      );
     }
 
     // skip addLabels if there's no label to add
     if (labelsToAdd.length > 0) {
-      await this.ctx.github.issues.addLabels({
-        owner: this.ctx.payload.repository.owner.login,
-        repo: this.ctx.payload.repository.name,
-        issue_number: this.pr_number,
-        labels: labelsToAdd
-      });
+      await this.ctx.octokit.issues.addLabels(
+        this.ctx.repo({
+          issue_number: this.pr_number,
+          labels: labelsToAdd
+        })
+      );
     }
     this.dispatch_labels = labels;
   }
@@ -432,18 +432,22 @@ export class CIFlowBot {
 
   async setContext(): Promise<boolean> {
     this.event = this.ctx.name;
+    // @ts-expect-error (we know these are available because we only use PR and issue triggers)
     const pr = this.ctx.payload?.pull_request || this.ctx.payload?.issue;
     this.pr_number = pr?.number;
     this.pr_author = pr?.user?.login;
     this.pr_labels = pr?.labels
       ?.filter(label => label.name.startsWith(CIFlowBot.pr_label_prefix))
       ?.map(label => label.name);
-    this.owner = this.ctx.payload?.repository?.owner?.login;
-    this.repo = this.ctx.payload?.repository?.name;
+    this.owner = this.ctx.repo().owner;
+    this.repo = this.ctx.repo().repo;
 
     if (this.event === CIFlowBot.event_issue_comment) {
+      // @ts-expect-error we check this above
       this.comment_author = this.ctx.payload?.comment?.user?.login;
+      // @ts-expect-error we check this above
       this.comment_body = this.ctx.payload?.comment?.body;
+      // @ts-expect-error we check this above
       this.comment_id = this.ctx.payload?.comment?.id;
 
       // if parseComment returns false, we don't need to do anything
@@ -489,13 +493,13 @@ export class CIFlowBot {
     await this.dispatch();
   }
 
-  static main(app: probot.Application): void {
+  static main(app: Probot): void {
     const tracker = new CachedIssueTracker(
       app,
       'ciflow_tracking_issue',
       parseCIFlowIssue
     );
-    const webhookHandler = async (ctx: probot.Context): Promise<void> => {
+    const webhookHandler = async (ctx: Context): Promise<void> => {
       await new CIFlowBot(ctx, tracker).handler();
     };
     app.on('pull_request.opened', webhookHandler);
@@ -520,7 +524,7 @@ export class Ruleset {
   ruleset_json_link: string;
 
   constructor(
-    readonly ctx: probot.Context,
+    readonly ctx: Context,
     readonly owner: string,
     readonly repo: string,
     readonly pr_number: number,
@@ -528,13 +532,13 @@ export class Ruleset {
   ) {}
 
   async fetchRulesetJson(): Promise<IRulesetJson | null> {
-    const prRes = await this.ctx.github.pulls.get({
+    const prRes = await this.ctx.octokit.pulls.get({
       owner: this.owner,
       repo: this.repo,
       pull_number: this.pr_number
     });
     const head = prRes?.data?.head;
-    const contentRes = await this.ctx.github.repos.getContents({
+    const contentRes = await this.ctx.octokit.repos.getContent({
       ref: head.sha,
       owner: head.repo.owner.login,
       repo: head.repo.name,
@@ -551,7 +555,7 @@ export class Ruleset {
   }
 
   async fetchRootComment(perPage = 10): Promise<[number, string]> {
-    const commentsRes = await this.ctx.github.issues.listComments({
+    const commentsRes = await this.ctx.octokit.issues.listComments({
       owner: this.owner,
       repo: this.repo,
       issue_number: this.pr_number,
@@ -664,7 +668,7 @@ For more information, please take a look at the [CI Flow Wiki](https://github.co
     }
 
     if (commentId === 0) {
-      const res = await this.ctx.github.issues.createComment({
+      const res = await this.ctx.octokit.issues.createComment({
         body,
         owner: this.owner,
         repo: this.repo,
@@ -672,7 +676,7 @@ For more information, please take a look at the [CI Flow Wiki](https://github.co
       });
       commentId = res.data.id;
     } else {
-      await this.ctx.github.issues.updateComment({
+      await this.ctx.octokit.issues.updateComment({
         body,
         owner: this.owner,
         repo: this.repo,

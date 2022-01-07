@@ -5,12 +5,12 @@ import autoLabelBot from './auto-label-bot';
 import triggerCircleCiBot from './trigger-circleci-workflows';
 import verifyDisableTestIssueBot from './verify-disable-test-issue';
 import {CIFlowBot} from './ciflow-bot';
-import {Application} from 'probot';
+import {Probot} from 'probot';
 
 // Needed for traceback translation from transpiled javascript -> typescript
 install();
 
-function runBot(app: Application): void {
+function runBot(app: Probot): void {
   autoCcBot(app);
   autoLabelBot(app);
   triggerCircleCiBot(app);
