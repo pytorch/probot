@@ -33,7 +33,7 @@ async function loadConfig(context: Context): Promise<Config | {}> {
   let configObj = repoMap.get(repoKey);
   if (configObj === undefined) {
     context.log.info({repoKey}, 'loadConfig');
-    configObj = (await context.config(configName)) as Config | {};
+    configObj = await context.config(configName);
     if (configObj === null || !configObj['labels_to_circle_params']) {
       return {};
     }

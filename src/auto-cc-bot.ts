@@ -62,6 +62,7 @@ function myBot(app: Probot): void {
         if (payloadType === 'issue') {
           await context.octokit.issues.update(context.issue({body: newBody}));
         } else if (payloadType === 'pull_request') {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           await context.octokit.pulls.update(context.issue({body: newBody}));
         }

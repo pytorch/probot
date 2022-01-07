@@ -432,7 +432,7 @@ export class CIFlowBot {
 
   async setContext(): Promise<boolean> {
     this.event = this.ctx.name;
-    // @ts-ignore
+    // @ts-expect-error (we know these are available because we only use PR and issue triggers)
     const pr = this.ctx.payload?.pull_request || this.ctx.payload?.issue;
     this.pr_number = pr?.number;
     this.pr_author = pr?.user?.login;
@@ -443,11 +443,11 @@ export class CIFlowBot {
     this.repo = this.ctx.repo().repo;
 
     if (this.event === CIFlowBot.event_issue_comment) {
-      // @ts-ignore
+      // @ts-expect-error we check this above
       this.comment_author = this.ctx.payload?.comment?.user?.login;
-      // @ts-ignore
+      // @ts-expect-error we check this above
       this.comment_body = this.ctx.payload?.comment?.body;
-      // @ts-ignore
+      // @ts-expect-error we check this above
       this.comment_id = this.ctx.payload?.comment?.id;
 
       // if parseComment returns false, we don't need to do anything
