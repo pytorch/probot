@@ -78,6 +78,19 @@ If you want to smoketest the bot on a test repository, you'll need to
 create a GitHub app.  Go to the webpage from probot; it will walk
 through the process.
 
+## Deploying GitHub Actions
+
+Although a GitHub App is convenient for testing, it requires an actual
+server to deploy in prod.  Previously we ran the server on AWS, but this
+deployment process was substantially more involved.  GitHub Actions
+deployment is simpler.  Follow the instructions at
+https://github.com/actions/toolkit/blob/master/docs/action-versioning.md
+
+Right now the GitHub Actions deployment is a little rocky because
+massive queueing in the PyTorch repository means it takes something
+like 30min before actions are run.  So we are also running AWS
+side-by-side.
+
 ## Deploying to AWS
 
 [`.github/workflows/build.yml`](.github/workflows/build.yml) will build and deploy the code on every push to `main`.

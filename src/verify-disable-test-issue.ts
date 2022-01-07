@@ -1,4 +1,4 @@
-import {Context, Probot} from 'probot';
+import * as probot from 'probot';
 
 const validationCommentStart = '<!-- validation-comment-start -->';
 const validationCommentEnd = '<!-- validation-comment-end -->';
@@ -137,52 +137,55 @@ export function formValidationComment(
   return validationCommentStart + body + validationCommentEnd;
 }
 
-function myBot(app: Probot): void {
-  app.on(['issues.opened', 'issues.edited'], async (context: Context) => {
-    const state = context.payload['issue']['state'];
-    const title = context.payload['issue']['title'];
-    const owner = context.payload['repository']['owner']['login'];
-    const repo = context.payload['repository']['name'];
+function myBot(app: probot.Application): void {
+  app.on(
+    ['issues.opened', 'issues.edited'],
+    async (context: probot.Context) => {
+      const state = context.payload['issue']['state'];
+      const title = context.payload['issue']['title'];
+      const owner = context.payload['repository']['owner']['login'];
+      const repo = context.payload['repository']['name'];
 
-    if (state === 'closed' || !title.startsWith(disabledKey)) {
-      return;
-    }
+      if (state === 'closed' || !title.startsWith(disabledKey)) {
+        return;
+      }
 
-    const body = context.payload['issue']['body'];
-    const number = context.payload['issue']['number'];
-    const existingValidationCommentData = await getValidationComment(
-      context,
-      number,
-      owner,
-      repo
-    );
-    const existingValidationCommentID = existingValidationCommentData[0];
-    const existingValidationComment = existingValidationCommentData[1];
-
-    const testName = parseTitle(title);
-    const platforms = parseBody(body);
-    const validationComment = formValidationComment(testName, platforms);
-
-    if (existingValidationComment === validationComment) {
-      return;
-    }
-
-    if (existingValidationCommentID === 0) {
-      await context.octokit.issues.createComment({
-        body: validationComment,
+      const body = context.payload['issue']['body'];
+      const number = context.payload['issue']['number'];
+      const existingValidationCommentData = await getValidationComment(
+        context,
+        number,
         owner,
-        repo,
-        issue_number: number
-      });
-    } else {
-      await context.octokit.issues.updateComment({
-        body: validationComment,
-        owner,
-        repo,
-        comment_id: existingValidationCommentID
-      });
+        repo
+      );
+      const existingValidationCommentID = existingValidationCommentData[0];
+      const existingValidationComment = existingValidationCommentData[1];
+
+      const testName = parseTitle(title);
+      const platforms = parseBody(body);
+      const validationComment = formValidationComment(testName, platforms);
+
+      if (existingValidationComment === validationComment) {
+        return;
+      }
+
+      if (existingValidationCommentID === 0) {
+        await context.github.issues.createComment({
+          body: validationComment,
+          owner,
+          repo,
+          issue_number: number
+        });
+      } else {
+        await context.github.issues.updateComment({
+          body: validationComment,
+          owner,
+          repo,
+          comment_id: existingValidationCommentID
+        });
+      }
     }
-  });
+  );
 }
 
 export default myBot;

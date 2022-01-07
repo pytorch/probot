@@ -1,11 +1,11 @@
-import {Context, Probot} from 'probot';
+import * as probot from 'probot';
 
 const regexToLabel: [RegExp, string][] = [
   [/rocm/gi, 'module: rocm'],
   [/DISABLED\s+test.*\(.*\)/g, 'skipped']
 ];
 
-function myBot(app: Probot): void {
+function myBot(app: probot.Application): void {
   function addLabel(
     labelSet: Set<string>,
     newLabels: string[],
@@ -49,16 +49,14 @@ function myBot(app: Probot): void {
     }
 
     if (newLabels.length) {
-      await context.octokit.issues.addLabels(
-        context.issue({labels: newLabels})
-      );
+      await context.github.issues.addLabels(context.issue({labels: newLabels}));
     }
   });
 
   async function addLabelsFromTitle(
     existingLabels: string[],
     title: string,
-    context: Context
+    context
   ): Promise<void> {
     const labelSet = new Set(existingLabels);
     const newLabels = [];
@@ -70,9 +68,7 @@ function myBot(app: Probot): void {
     }
 
     if (newLabels.length) {
-      await context.octokit.issues.addLabels(
-        context.issue({labels: newLabels})
-      );
+      await context.github.issues.addLabels(context.issue({labels: newLabels}));
     }
   }
 

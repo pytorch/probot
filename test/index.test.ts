@@ -41,7 +41,7 @@ Some header text
       .post(
         '/repos/ezyang/testing-ideal-computing-machine/issues/5/labels',
         body => {
-          expect(body).toMatchObject({labels: ['triage review']});
+          expect(body).toMatchObject(['triage review']);
           return true;
         }
       )
