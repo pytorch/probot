@@ -1,0 +1,5 @@
+name: 'PyTorch Probot'
+description: 'Probot for PyTorch.'
+runs:
+  using: 'node12'
+  main: 'action.js'

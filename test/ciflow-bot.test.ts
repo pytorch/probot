@@ -28,7 +28,6 @@ describe('CIFlowBot Unit Tests', () => {
     event.payload.repository.owner.login = owner;
     event.payload.repository.name = repo;
 
-    // @ts-ignore
     const ciflow = new CIFlowBot(new probot.Context(event, null, null));
     const isValid = await ciflow.setContext();
     expect(isValid).toBe(true);
@@ -198,7 +197,7 @@ describe('CIFlowBot Integration Tests', () => {
 
     const scope = nock('https://api.github.com')
       .post(`/repos/${owner}/${repo}/issues/${pr_number}/labels`, body => {
-        expect(body).toMatchObject({labels: ['ciflow/default']});
+        expect(body).toMatchObject(['ciflow/default']);
         return true;
       })
       .reply(200);
@@ -220,7 +219,7 @@ describe('CIFlowBot Integration Tests', () => {
 
     const scope = nock('https://api.github.com')
       .post(`/repos/${owner}/${repo}/issues/${pr_number}/labels`, body => {
-        expect(body).toMatchObject({labels: ['ciflow/default']});
+        expect(body).toMatchObject(['ciflow/default']);
         return true;
       })
       .reply(200);
@@ -315,7 +314,7 @@ describe('CIFlowBot Integration Tests', () => {
             .post(
               `/repos/${owner}/${repo}/issues/${pr_number}/labels`,
               body => {
-                expect(body).toMatchObject({labels: expectedLabels});
+                expect(body).toMatchObject(expectedLabels);
                 return true;
               }
             )
@@ -425,7 +424,7 @@ describe('Ruleset Integration Tests', () => {
   event.payload.repository.owner.login = owner;
   event.payload.repository.name = repo;
   event.payload.comment.user.login = event.payload.issue.user.login;
-  const github = new probot.ProbotOctokit();
+  const github = probot.GitHubAPI();
 
   beforeEach(() => {
     nock('https://api.github.com')
@@ -458,9 +457,7 @@ describe('Ruleset Integration Tests', () => {
         }
       })
       .get(
-        `/repos/${owner}/${repo}/contents/${encodeURIComponent(
-          '.github/generated-ciflow-ruleset.json'
-        )}?ref=${sha}`
+        `/repos/${owner}/${repo}/contents/.github/generated-ciflow-ruleset.json?ref=${sha}`
       )
       .reply(200, {
         content: Buffer.from(
@@ -508,9 +505,7 @@ describe('Ruleset Integration Tests', () => {
         }
       })
       .get(
-        `/repos/${owner}/${repo}/contents/${encodeURIComponent(
-          '.github/generated-ciflow-ruleset.json'
-        )}?ref=${sha}`
+        `/repos/${owner}/${repo}/contents/.github/generated-ciflow-ruleset.json?ref=${sha}`
       )
       .reply(200, {
         content: Buffer.from(

@@ -99,7 +99,6 @@ describe('trigger-circleci-workflows', () => {
       })
       .reply(201);
 
-    // @ts-expect-error payload is a valid object
     await probot.receive({name: 'pull_request', payload, id: '2'});
 
     expect(scope.isDone()).toBe(true);
@@ -131,7 +130,6 @@ describe('trigger-circleci-workflows', () => {
       })
       .reply(201);
 
-    // @ts-expect-error payload is a valid object
     await probot.receive({name: 'pull_request', payload, id: '2'});
 
     expect(scope.isDone()).toBe(true);
@@ -152,7 +150,6 @@ describe('trigger-circleci-workflows', () => {
       })
       .reply(201);
 
-    // @ts-expect-error payload is a valid object
     await probot.receive({name: 'push', payload, id: '2'});
 
     scope.done();
@@ -173,7 +170,6 @@ describe('trigger-circleci-workflows', () => {
       })
       .reply(201);
 
-    // @ts-expect-error payload is a valid object
     await probot.receive({name: 'push', payload, id: '2'});
 
     scope.done();
@@ -194,7 +190,6 @@ describe('trigger-circleci-workflows', () => {
       })
       .reply(201);
 
-    // @ts-expect-error payload is a valid object
     await probot.receive({name: 'push', payload, id: '2'});
 
     scope.done();

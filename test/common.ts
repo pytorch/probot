@@ -10,13 +10,8 @@ export function nockTracker(
   const configPayload = require('./fixtures/config.json');
   configPayload['content'] = Buffer.from(configContent).toString('base64');
   nock('https://api.github.com')
-    .get(
-      '/repos/' +
-        ghaPath +
-        '/contents/' +
-        encodeURIComponent('.github/pytorch-probot.yml')
-    )
-    .reply(200, configContent);
+    .get('/repos/' + ghaPath + '/contents/.github/pytorch-probot.yml')
+    .reply(200, configPayload);
 
   const payload = require('./fixtures/issue.json');
   payload['body'] = contents;

@@ -26,7 +26,7 @@ describe('auto-label-bot', () => {
       .post(
         '/repos/ezyang/testing-ideal-computing-machine/issues/5/labels',
         body => {
-          expect(body).toMatchObject({labels: ['triage review']});
+          expect(body).toMatchObject(['triage review']);
           return true;
         }
       )
@@ -50,7 +50,7 @@ describe('auto-label-bot', () => {
       .post(
         '/repos/ezyang/testing-ideal-computing-machine/issues/5/labels',
         body => {
-          expect(body).toMatchObject({labels: ['module: rocm']});
+          expect(body).toMatchObject(['module: rocm']);
           return true;
         }
       )
@@ -72,7 +72,7 @@ describe('auto-label-bot', () => {
 
     const scope = nock('https://api.github.com')
       .post('/repos/zhouzhuojie/gha-ci-playground/issues/31/labels', body => {
-        expect(body).toMatchObject({labels: ['module: rocm']});
+        expect(body).toMatchObject(['module: rocm']);
         return true;
       })
       .reply(200);
@@ -95,7 +95,7 @@ describe('auto-label-bot', () => {
       .post(
         '/repos/ezyang/testing-ideal-computing-machine/issues/5/labels',
         body => {
-          expect(body).toMatchObject({labels: ['skipped']});
+          expect(body).toMatchObject(['skipped']);
           return true;
         }
       )
@@ -118,7 +118,7 @@ describe('auto-label-bot', () => {
 
     const scope = nock('https://api.github.com')
       .post('/repos/zhouzhuojie/gha-ci-playground/issues/31/labels', body => {
-        expect(body).toMatchObject({labels: ['skipped']});
+        expect(body).toMatchObject(['skipped']);
         return true;
       })
       .reply(200);

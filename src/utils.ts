@@ -1,6 +1,6 @@
-import {Context, Probot} from 'probot';
+import * as probot from 'probot';
 
-export function repoKey(context: Context): string {
+export function repoKey(context: probot.Context): string {
   const repo = context.repo();
   return `${repo.owner}/${repo.repo}`;
 }
@@ -8,7 +8,7 @@ export function repoKey(context: Context): string {
 export class CachedConfigTracker {
   repoConfigs = {};
 
-  constructor(app: Probot) {
+  constructor(app: probot.Application) {
     app.on('push', async context => {
       if (context.payload.ref === 'refs/heads/master') {
         await this.loadConfig(context, /* force */ true);
@@ -16,7 +16,7 @@ export class CachedConfigTracker {
     });
   }
 
-  async loadConfig(context: Context, force = false): Promise<object> {
+  async loadConfig(context: probot.Context, force = false): Promise<object> {
     const key = repoKey(context);
     if (!(key in this.repoConfigs) || force) {
       context.log({key}, 'loadConfig');
@@ -32,7 +32,7 @@ export class CachedIssueTracker extends CachedConfigTracker {
   issueParser: (data: string) => object;
 
   constructor(
-    app: Probot,
+    app: probot.Application,
     configName: string,
     issueParser: (data: string) => object
   ) {
@@ -43,19 +43,19 @@ export class CachedIssueTracker extends CachedConfigTracker {
     app.on('issues.edited', async context => {
       const config = await this.loadConfig(context);
       const issue = context.issue();
-      if (config[this.configName] === issue.issue_number) {
+      if (config[this.configName] === issue.number) {
         await this.loadIssue(context, /* force */ true);
       }
     });
   }
 
-  async loadIssue(context: Context, force = false): Promise<object> {
+  async loadIssue(context: probot.Context, force = false): Promise<object> {
     const key = repoKey(context);
     if (!(key in this.repoIssues) || force) {
       context.log({key}, 'loadIssue');
       const config = await this.loadConfig(context);
       if (config != null && this.configName in config) {
-        const subsPayload = await context.octokit.issues.get(
+        const subsPayload = await context.github.issues.get(
           context.repo({issue_number: config[this.configName]})
         );
         const subsText = subsPayload.data['body'];

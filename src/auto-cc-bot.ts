@@ -1,20 +1,20 @@
 import {parseSubscriptions} from './subscriptions';
 import {CachedIssueTracker} from './utils';
-import {Probot, Context} from 'probot';
+import * as probot from 'probot';
 
-function myBot(app: Probot): void {
+function myBot(app: probot.Application): void {
   const tracker = new CachedIssueTracker(
     app,
     'tracking_issue',
     parseSubscriptions
   );
 
-  async function loadSubscriptions(context: Context): Promise<object> {
+  async function loadSubscriptions(context: probot.Context): Promise<object> {
     return tracker.loadIssue(context);
   }
 
   async function runBotForLabels(
-    context: Context,
+    context: probot.Context,
     payloadType: string
   ): Promise<void> {
     const subscriptions = await loadSubscriptions(context);
@@ -60,11 +60,9 @@ function myBot(app: Probot): void {
           : newCCString;
         context.log({newBody});
         if (payloadType === 'issue') {
-          await context.octokit.issues.update(context.issue({body: newBody}));
+          await context.github.issues.update(context.issue({body: newBody}));
         } else if (payloadType === 'pull_request') {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          await context.octokit.pulls.update(context.issue({body: newBody}));
+          await context.github.pulls.update(context.issue({body: newBody}));
         }
       } else {
         context.log('no action: no change from existing cc list on issue');
