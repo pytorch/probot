@@ -16,6 +16,7 @@ function runBot(app: Application): void {
   autoLabelBot(app);
   triggerCircleCiBot(app);
   verifyDisableTestIssueBot(app);
+  mergeBot(app);
 
   // kill switch for ciflow
   if (process.env.ENABLE_CIFLOWBOT === 'true') {
