@@ -6,6 +6,7 @@ function mergeBot(app: probot.Application): void {
     const commentBody = ctx.payload?.comment?.body;
     const owner = ctx.payload?.repository?.owner?.login;
     const repo = ctx.payload?.repository?.name;
+    const commentId = ctx.payload?.comment?.id;
     const prNum = ctx.payload?.issue?.number;
     if (commentBody?.match(cmdPat)) {
       await ctx.github.repos.createDispatchEvent({
@@ -16,11 +17,11 @@ function mergeBot(app: probot.Application): void {
           pr_num: prNum
         }
       });
-      await ctx.github.issues.createComment({
-        body: 'Hello World',
+      await ctx.github.reactions.createForIssueComment({
+        comment_id: commentId,
+        content: '+1',
         owner,
-        repo,
-        issue_number: prNum
+        repo
       });
     }
   });
