@@ -1,3 +1,6 @@
+# This repository is archived and our Probot stuff has moved to https://github.com/pytorch/test-infra/tree/main/torchci
+
+
 # pytorch-probot
 
 A GitHub App built with [Probot](https://github.com/probot/probot) that implements bot actions for PyTorch
